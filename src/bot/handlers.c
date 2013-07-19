@@ -41,8 +41,13 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
 {
     struct list *mod = NULL;
 
-    LIST_FOREACH(bot->modules, mod)
-        list_data(mod, struct mod_loaded *)->handler_func(ev);
+    LIST_FOREACH(bot->modules, mod) {
+        struct mod_loaded *m = list_data(mod, struct mod_loaded *);
+
+        if (m->state->hooks & MASK(ev->type)) {
+            m->handler_func(ev);
+        }
+    }
 
     return 0;
 }
@@ -55,20 +60,9 @@ int bot_handle_command(struct bot *bot,
 {
     struct irc_prefix_parts user;
     struct irc_message response;
-    struct mod_event event = {
-        .type = EVENT_COMMAND,
-        .command = {
-            .prefix = prefix,
-            .target = target,
-            .command = cmd,
-            .args = args
-        }
-    };
-
+    int priv = !irc_is_channel(target);
 
     irc_split_prefix(&user, prefix);
-
-    log_debug(NULL, "Handle command '%s'...", cmd);
 
     if (!strcmp(cmd, "loadmod")) {
         if (!mod_load(bot, args)) {
@@ -107,28 +101,32 @@ int bot_handle_command(struct bot *bot,
         sess_sendmsg(bot->sess, &response);
     }
 
-    return bot_dispatch_event(bot, &event);
+    return bot_dispatch_event(bot, &(struct mod_event) {
+        .type = priv ? EVENT_PRIVATE_COMMAND : EVENT_PUBLIC_COMMAND,
+        .command = {
+            .prefix = prefix,
+            .target = priv ? NULL : target,
+            .command = cmd,
+            .args = args
+        }
+    });
 }
 
 int bot_on_event(void *arg, const struct irc_message *m)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_RAW,
         .raw = {
             .msg = m
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_ping(void *arg)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_PING
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_privmsg(void *arg,
@@ -173,16 +171,16 @@ int bot_on_privmsg(void *arg,
                 return bot_handle_command(bot, prefix, target, cmd, arg);
             }
         } else {
-            struct mod_event event = {
-                .type = EVENT_PRIVMSG,
-                .privmsg = {
+            int priv = !irc_is_channel(target);
+
+            return bot_dispatch_event(bot, &(struct mod_event) {
+                .type = priv ? EVENT_PRIVATE_MESSAGE : EVENT_PUBLIC_MESSAGE,
+                .message = {
                     .prefix = prefix,
-                    .target = target,
+                    .target = priv ? NULL : target,
                     .msg = msg
                 }
-            };
-
-            return bot_dispatch_event(bot, &event);
+            });
         }
     }
 
@@ -205,30 +203,28 @@ int bot_on_notice(void *arg,
 
         return bot_on_ctcp_response(bot, prefix, target, ctcp, args);
     } else {
-        struct mod_event event = {
-            .type = EVENT_NOTICE,
-            .notice = {
+        int priv = !irc_is_channel(target);
+
+        return bot_dispatch_event(bot, &(struct mod_event) {
+            .type = priv ? EVENT_PRIVATE_NOTICE : EVENT_PUBLIC_NOTICE,
+            .message = {
                 .prefix = prefix,
-                .target = target,
+                .target = priv ? NULL : target,
                 .msg = msg
             }
-        };
-
-        return bot_dispatch_event(bot, &event);
+        });
     }
 }
 
 int bot_on_join(void *arg, const char *prefix, const char *channel)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_JOIN,
         .join = {
             .prefix = prefix,
             .channel = channel
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_part(void *arg,
@@ -236,29 +232,25 @@ int bot_on_part(void *arg,
         const char *channel,
         const char *reason)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_PART,
         .part = {
             .prefix = prefix,
             .channel = channel,
             .msg = reason
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_quit(void *arg, const char *prefix, const char *reason)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_QUIT,
         .quit = {
             .prefix = prefix,
             .msg = reason
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_kick(void *arg,
@@ -267,7 +259,7 @@ int bot_on_kick(void *arg,
         const char *channel,
         const char *reason)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_KICK,
         .kick = {
             .prefix_kicker = prefix_kicker,
@@ -275,35 +267,29 @@ int bot_on_kick(void *arg,
             .channel = channel,
             .msg = reason
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_nick(void *arg, const char *prefix_old, const char *prefix_new)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_NICK,
         .nick = {
             .prefix_old = prefix_old,
             .prefix_new = prefix_new
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_invite(void *arg, const char *prefix, const char *channel)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_INVITE,
         .invite = {
             .prefix = prefix,
             .channel = channel
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_topic(void *arg,
@@ -312,7 +298,7 @@ int bot_on_topic(void *arg,
         const char *topic_old,
         const char *topic_new)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_TOPIC,
         .topic = {
             .prefix = prefix,
@@ -320,9 +306,7 @@ int bot_on_topic(void *arg,
             .topic_old = topic_old,
             .topic_new = topic_new
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_mode_set(void *arg,
@@ -331,17 +315,15 @@ int bot_on_mode_set(void *arg,
         char mode,
         const char *target)
 {
-    struct mod_event event = {
-        .type = EVENT_MODESET,
-        .mode_set = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
+        .type = EVENT_CHANNEL_MODE_SET,
+        .mode_change = {
             .prefix = prefix,
             .channel = channel,
             .mode = mode,
             .arg = target
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_mode_unset(void *arg,
@@ -350,17 +332,15 @@ int bot_on_mode_unset(void *arg,
         char mode,
         const char *target)
 {
-    struct mod_event event = {
-        .type = EVENT_MODEUNSET,
-        .mode_unset = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
+        .type = EVENT_CHANNEL_MODE_UNSET,
+        .mode_change = {
             .prefix = prefix,
             .channel = channel,
             .mode = mode,
             .arg = target
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_modes(void *arg,
@@ -368,46 +348,38 @@ int bot_on_modes(void *arg,
         const char *channel,
         const char *modes)
 {
-    struct mod_event event = {
-        .type = EVENT_MODES,
+    return bot_dispatch_event(arg, &(struct mod_event) {
+        .type = EVENT_CHANNEL_MODES,
         .modes = {
             .prefix = prefix,
             .channel = channel,
             .modes = modes
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_idle(void *arg, time_t lastidle)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event){
         .type = EVENT_IDLE,
         .idle = {
             .last = lastidle
         }
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_connect(void *arg)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_CONNECT
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 int bot_on_disconnect(void *arg)
 {
-    struct mod_event event = {
+    return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_DISCONNECT
-    };
-
-    return bot_dispatch_event(arg, &event);
+    });
 }
 
 
@@ -421,16 +393,7 @@ int bot_on_ctcp(struct bot *bot,
     struct irc_prefix_parts user;
     struct irc_message response;
 #endif
-
-    struct mod_event event = {
-        .type = EVENT_CTCPREQ,
-        .ctcp_req = {
-            .prefix = prefix,
-            .target = target,
-            .ctcp = ctcp,
-            .arg = args
-        }
-    };
+    int priv = !irc_is_channel(target);
 
 #if 0
     irc_split_prefix(&user, prefix);
@@ -486,7 +449,15 @@ int bot_on_ctcp(struct bot *bot,
     }
 #endif
 
-    return bot_dispatch_event(bot, &event);
+    return bot_dispatch_event(bot, &(struct mod_event) {
+        .type = priv ? EVENT_PRIVATE_CTCP_REQUEST : EVENT_PUBLIC_CTCP_REQUEST,
+        .command = {
+            .prefix = prefix,
+            .target = priv ? NULL : target,
+            .command = ctcp,
+            .args = args
+        }
+    });
 }
 
 int bot_on_ctcp_response(struct bot *bot,
@@ -495,20 +466,20 @@ int bot_on_ctcp_response(struct bot *bot,
         const char *ctcp,
         const char *args)
 {
-    struct mod_event event = {
-        .type = EVENT_CTCPRESP,
-        .ctcp_resp = {
-            .prefix = prefix,
-            .target = target,
-            .ctcp = ctcp,
-            .arg = args
-        }
-    };
+    int priv = !irc_is_channel(target);
 
     if (!strcmp(ctcp, "ACTION"))
         return bot_on_action(bot, prefix, target, args);
 
-    return bot_dispatch_event(bot, &event);
+    return bot_dispatch_event(bot, &(struct mod_event) {
+        .type = priv ? EVENT_PRIVATE_CTCP_RESPONSE : EVENT_PUBLIC_CTCP_RESPONSE,
+        .command = {
+            .prefix = prefix,
+            .target = priv ? NULL : target,
+            .command = ctcp,
+            .args = args
+        }
+    });
 }
 
 int bot_on_action(struct bot *bot,
@@ -516,14 +487,14 @@ int bot_on_action(struct bot *bot,
         const char *target,
         const char *msg)
 {
-    struct mod_event event = {
-        .type = EVENT_ACTION,
-        .action = {
+    int priv = !irc_is_channel(target);
+
+    return bot_dispatch_event(bot, &(struct mod_event) {
+        .type = priv ? EVENT_PRIVATE_ACTION : EVENT_PUBLIC_ACTION,
+        .message = {
             .prefix = prefix,
-            .target = target,
+            .target = priv ? NULL : target,
             .msg = msg
         }
-    };
-
-    return bot_dispatch_event(bot, &event);
+    });
 }

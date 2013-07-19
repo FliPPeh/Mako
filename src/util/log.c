@@ -26,25 +26,17 @@ static struct _log_format _log_line_formats[] = {
 
 struct log_context _log_default_logger = {
     .minlev = LOG_INFO,
-    .name = "root",
     .file = "",
     .logf = NULL
 };
 
-/*
- * If this is not NULL, it will get used as the default logger until it is
- * not set to NULL anymore. Useful for temporary derived loggers for modules
- * that would otherwise only use the root logger.
- */
-struct log_context *_log_temp_logger = NULL;
-struct log_context *_log_prev_logger = NULL;
 
 /*
  * Logging
  */
-int log_init(struct log_context *log, const char *name, const char *logfile)
+int log_init(const char *logfile)
 {
-    log = PTR_OR_DEF(log);
+    struct log_context *log = &_log_default_logger;
 
     if (log->logf)
         fclose(log->logf);
@@ -58,66 +50,21 @@ int log_init(struct log_context *log, const char *name, const char *logfile)
         strncpy(log->file, logfile, sizeof(log->file) - 1);
     }
 
-    strncpy(log->name, name, sizeof(log->name) - 1);
     log->minlev = LOG_INFO;
 
     return 0;
 }
 
-int log_set_minlevel(struct log_context *log, enum loglevel minlev)
+int log_set_minlevel(enum loglevel minlev)
 {
-    log = PTR_OR_DEF(log);
+    struct log_context *log = &_log_default_logger;
 
     return (log->minlev = minlev);
 }
 
-
-/*
- * Manipulate temporary default logger
- */
-void log_set_default(struct log_context *log)
+int log_destroy()
 {
-    _log_prev_logger = _log_temp_logger;
-    _log_temp_logger = log;
-}
-
-void log_unset_default()
-{
-    _log_temp_logger = _log_prev_logger;
-}
-
-void log_restore_default()
-{
-    _log_temp_logger = NULL;
-}
-
-
-/* Derive a log context from an existing one (same minlev, same file,
- * different name) */
-int log_derive(
-        struct log_context *log,
-        const struct log_context *olog,
-        const char *name)
-{
-    char namebuf[LOGNAME_MAX] = {0};
-
-    olog = PTR_OR_DEF(olog);
-
-    memset(log, 0, sizeof(*log));
-
-    snprintf(namebuf, sizeof(namebuf),
-            LOG_DERIVED_NAME_FORMAT,
-            LOG_DERIVED_NAME_ORDER(olog->name, name));
-
-    log_init(log, namebuf, olog->logf ? olog->file : NULL);
-    log->minlev = olog->minlev;
-
-    return 0;
-}
-
-int log_destroy(struct log_context *log)
-{
-    log = PTR_OR_DEF(log);
+    struct log_context *log = &_log_default_logger;
 
     if (log->logf != NULL)
         fclose(log->logf);
@@ -125,26 +72,22 @@ int log_destroy(struct log_context *log)
     return 0;
 }
 
-int log_logf(struct log_context *log, enum loglevel lv, const char *fmt, ...)
+int log_logf(enum loglevel lv, const char *name, const char *fmt, ...)
 {
     va_list args;
     int ret;
 
     va_start(args, fmt);
-    ret = log_vlogf(log, lv, fmt, args);
+    ret = _log_vlogf(lv, name, fmt, args);
     va_end(args);
 
     return ret;
 }
 
-int log_vlogf(
-        struct log_context *log,
-        enum loglevel lv,
-        const char *fmt,
-        va_list args)
+int _log_vlogf(enum loglevel lv, const char *n, const char *fmt, va_list args)
 {
     FILE *out = (lv >= LOG_ERROR) ? stderr : stdout;
-    log = PTR_OR_DEF(log);
+    struct log_context *log = &_log_default_logger;
 
     if (lv < log->minlev)
         return 0;
@@ -153,22 +96,22 @@ int log_vlogf(
         va_list argscp;
 
         va_copy(argscp, args);
-        log_vlogtofilep(log, log->logf, lv, fmt, argscp);
+        _log_vlogtofilep(log->logf, lv, n, fmt, argscp);
         va_end(argscp);
 
         fflush(log->logf);
     }
 
-    log_vlogtofilep(log, out, lv, fmt, args);
+    _log_vlogtofilep(out, lv, n, fmt, args);
     fflush(out);
 
     return 0;
 }
 
-int log_vlogtofilep(
-        struct log_context *log,
+int _log_vlogtofilep(
         FILE *fp,
         enum loglevel lv,
+        const char *n,
         const char *fmt,
         va_list args)
 {
@@ -179,8 +122,13 @@ int log_vlogtofilep(
 
     strftime(buffer, sizeof(buffer), STRFTIME_FORMAT, tm);
 
-    fprintf(fp, LOG_FORMAT "%s",
-            LOG_ORDER(buffer, log->name, _log_levels[lv]),
+    if (n)
+        fprintf(fp, LOG_FORMAT_NAMED "%s",
+            LOG_ORDER_NAMED(buffer, n, _log_levels[lv]),
+            _log_line_formats[lv].pre);
+    else
+        fprintf(fp, LOG_FORMAT "%s",
+            LOG_ORDER(buffer, _log_levels[lv]),
             _log_line_formats[lv].pre);
 
     vfprintf(fp, fmt, args);
@@ -189,17 +137,28 @@ int log_vlogtofilep(
     return 0;
 }
 
-#define X(lvl, name, fun, prefmt, postfmt) \
-    void fun(struct log_context *log, const char *fmt, ...) \
+#define X(lvl, name, fun, prefmt, postfmt)  \
+    void fun(const char *fmt, ...)          \
+    {                                       \
+        va_list args;                       \
+                                            \
+        va_start(args, fmt);                \
+        _log_vlogf(lvl, NULL, fmt, args);   \
+        va_end(args);                       \
+                                            \
+        return;                             \
+    }                                       \
+                                            \
+    void fun ## _n(const char *nam, const char *fmt, ...)   \
     {                                                       \
         va_list args;                                       \
                                                             \
         va_start(args, fmt);                                \
-        log_vlogf(log, lvl, fmt, args);                     \
+        _log_vlogf(lvl, nam, fmt, args);                    \
         va_end(args);                                       \
                                                             \
         return;                                             \
-    }
+    }                                                       \
 
 LOGLEVELS
 #undef X

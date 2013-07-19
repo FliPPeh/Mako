@@ -24,11 +24,11 @@
 /*
  * Log header output format
  */
-#define LOG_FORMAT "\e[1;34m%s\e[0m [\e[1;31m%s\e[0m.\e[0;33m%s\e[0m]: "
-#define LOG_ORDER(time, name, level) time, name, level
+#define LOG_FORMAT_NAMED "\e[1;34m%s\e[0m [\e[1;31m%s\e[0m.\e[0;33m%s\e[0m]: "
+#define LOG_ORDER_NAMED(time, name, level) time, name, level
 
-#define LOG_DERIVED_NAME_FORMAT "%s/%s"
-#define LOG_DERIVED_NAME_ORDER(super, deriv) super, deriv
+#define LOG_FORMAT "\e[1;34m%s\e[0m [\e[0;33m%s\e[0m]: "
+#define LOG_ORDER(time, level) time, level
 
 /*
  * Defines all possible log levels and various properties.
@@ -49,6 +49,7 @@
     X(LOG_WARNING, "warning", log_warn,  "\e[1;33m", "\e[0m") \
     X(LOG_ERROR,   "error",   log_error, "\e[1;31m", "\e[0m") \
     X(LOG_FATAL,   "fatal",   log_fatal, "\e[1;31m", "\e[0m") \
+    X(LOG_WTF,     "wtf?",    log_wtf,   "\e[1;31m", "!?\e[0m")
 
 #define X(lvl, name, fun, prefmt, postfmt) lvl,
 enum loglevel
@@ -60,7 +61,6 @@ enum loglevel
 struct log_context
 {
     enum loglevel minlev;
-    char name[LOGNAME_MAX];
 
     char file[LOGFILE_MAX];
     FILE *logf;
@@ -68,60 +68,33 @@ struct log_context
 
 extern struct log_context _log_default_logger;
 
-#define PTR_OR_DEF(ptr) \
-    (ptr ? ptr : (_log_temp_logger ? _log_temp_logger : &_log_default_logger))
 
 /*
- * Logging
+ * Core
  */
-int log_init(struct log_context *log, const char *name, const char *logfile);
-int log_set_minlevel(struct log_context *log, enum loglevel minlev);
+int log_init(const char *logfile);
+int log_set_minlevel(enum loglevel minlev);
+int log_destroy();
 
-/*
- * Manipulate temporary default logger.
-*
- * These seemed like a much better idea than they turned out to be. Keeping them
- * in. In case they do get useful later.
- */
-void log_set_default(struct log_context *log);
-void log_unset_default();
-void log_restore_default();
 
-#define LOG_WITH_TEMP(templog, expr) \
-    log_set_default(templog); \
-    expr;                     \
-    log_unset_default();    \
+int log_logf(enum loglevel lv, const char *name, const char *fmt, ...);
 
-#define LOG_WITH_DERIV_TEMP(log, olog, name, expr) \
-    log_derive(log, olog, name); \
-    LOG_WITH_TEMP(log, expr);    \
-    log_destroy(log);
-
-/* Derive a log context from an existing one (same minlev, same file pointer,
- * different name) */
-int log_derive(
-        struct log_context *log,
-        const struct log_context *olog,
-        const char *name);
-
-int log_destroy(struct log_context *log);
-
-int log_logf(struct log_context *log, enum loglevel lv, const char *fmt, ...);
-int log_vlogf(
-        struct log_context *log,
-        enum loglevel lv,
-        const char *fmt,
-        va_list args);
-
-int log_vlogtofilep(
-        struct log_context *log,
+int _log_vlogf(enum loglevel lv, const char *n, const char *fmt, va_list args);
+int _log_vlogtofilep(
         FILE *fp,
         enum loglevel lv,
+        const char *n,
         const char *fmt,
         va_list args);
 
-#define X(lvl, name, fun, prefmt, postfmt) \
-    void fun(struct log_context *log, const char *fmt, ...);
+/*
+ * Generate specialized logging functions (log_info, log_warn, ...)
+ *
+ * If nam is not NULL, nam will be temporarily pushed for the current call.
+ */
+#define X(lvl, name, fun, prefmt, postfmt)                                  \
+    void fun(const char *fmt, ...);                                         \
+    void fun ## _n(const char *nam, const char *fmt, ...);
 
 LOGLEVELS
 #undef X

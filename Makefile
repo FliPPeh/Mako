@@ -2,7 +2,7 @@ CFLAGS=-Iinclude/ -Wall -g
 LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c 				\
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
-		net/socket.c						  				\
+		irc/net/socket.c					  				\
 		util/list.c util/log.c util/util.c
 CC=clang
 #CC=gcc
@@ -30,6 +30,9 @@ $(MODULES): $(addsuffix .so, $@)
 
 clean:
 	@find -name '*.o' -print -delete | sed -e 's/^/Delete /'
+	@find -name '*.so' -print -delete | sed -e 's/^/Delete /'
 
 	$(forach module, $(MODULES), @make -C $(addprefix $(MODSRCPATH)/, \
 		$(module)) clean)
+
+	@find -type f -perm +111 -print -delete | sed -e 's/^/Delete /'

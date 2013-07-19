@@ -7,6 +7,7 @@
 int mod_lua_register_core();
 
 int mod_lua_core_sendmsg(lua_State *L);
+int mod_lua_core_get_identity(lua_State *L);
 
 int mod_lua_core_get_channels(lua_State *L);
 int mod_lua_core_get_channel_meta(lua_State *L);

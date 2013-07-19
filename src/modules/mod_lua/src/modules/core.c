@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -17,6 +19,7 @@ int mod_lua_register_core()
 {
     const struct luaL_Reg core_functions[] = {
         { "sendmsg", mod_lua_core_sendmsg },
+        { "get_identity", mod_lua_core_get_identity },
         { "get_channels", mod_lua_core_get_channels },
         { "get_channel_meta", mod_lua_core_get_channel_meta },
         { "get_channel_modes", mod_lua_core_get_channel_modes },
@@ -48,6 +51,40 @@ int mod_lua_core_sendmsg(lua_State *L)
     mod_sendmsg(mod, &msg);
 
     return 0;
+}
+
+int mod_lua_core_get_identity(lua_State *L)
+{
+    const char *kind = lua_tostring(L, 1);
+    int itab = (lua_newtable(L), lua_gettop(L));
+    struct mod_identity ident;
+
+    get_identity(&ident);
+
+    if (!kind || !strcmp(kind, "*a")) {
+        lua_pushstring(L, ident.nick);
+        lua_setfield(L, itab, "nick");
+
+        lua_pushstring(L, ident.user);
+        lua_setfield(L, itab, "user");
+
+        lua_pushstring(L, ident.real);
+        lua_setfield(L, itab, "realname");
+
+    } else if (!strcmp(kind, "n")) {
+        lua_pushstring(L, ident.nick);
+
+    } else if (!strcmp(kind, "u")) {
+        lua_pushstring(L, ident.user);
+
+    } else if (!strcmp(kind, "r")) {
+        lua_pushstring(L, ident.real);
+
+    } else {
+        lua_pushnil(L);
+    }
+
+    return 1;
 }
 
 int mod_lua_core_get_channels(lua_State *L)

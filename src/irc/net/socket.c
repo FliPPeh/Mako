@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "net/socket.h"
+#include "irc/net/socket.h"
 #include "util/log.h"
 
 
@@ -41,8 +41,6 @@ const char *socket_addrcanon(struct sockaddr *sa, socklen_t len)
 
 int socket_connect(const char *host, const char *svc)
 {
-    struct log_context log;
-
     struct addrinfo hints;
     struct addrinfo *resolv = NULL;
     struct addrinfo *p = NULL;
@@ -50,16 +48,14 @@ int socket_connect(const char *host, const char *svc)
     int fd = -1;
     int gai_err = -1;
 
-    log_derive(&log, NULL, __func__);
-
     memset(&hints, 0, sizeof(hints));
     hints.ai_family   = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    log_info(&log, "Looking up '%s'...", host);
+    log_info("Looking up '%s'...", host);
 
     if ((gai_err = getaddrinfo(host, svc, &hints, &resolv))) {
-        log_error(&log, "Unable to look up '%s': %s",
+        log_error("Unable to look up '%s': %s",
                 host, gai_strerror(gai_err));
 
         goto exit;
@@ -70,13 +66,13 @@ int socket_connect(const char *host, const char *svc)
         const char *addrcanon = socket_addrcanon(p->ai_addr, p->ai_addrlen);
 
         if (!addrcanon)
-            log_info(&log, "Attempting '%s:%s'...", addrstr, svc);
+            log_info("Attempting '%s:%s'...", addrstr, svc);
         else
-            log_info(&log, "Attempting '%s:%s' (%s:%s)...",
+            log_info("Attempting '%s:%s' (%s:%s)...",
                     addrcanon, svc, addrstr,   svc);
 
         if ((fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
-            log_info(&log, "   Unable to create socket: %s", strerror(errno));
+            log_info("   Unable to create socket: %s", strerror(errno));
 
             continue;
         }
@@ -84,13 +80,13 @@ int socket_connect(const char *host, const char *svc)
         /* TODO: bind */
 
         if (connect(fd, p->ai_addr, p->ai_addrlen) < 0) {
-            log_info(&log, "   Unable to connect: %s", strerror(errno));
+            log_info("   Unable to connect: %s", strerror(errno));
 
             close(fd);
             continue;
         }
 
-        log_info(&log, "Connected to %s:%s!", addrcanon, svc);
+        log_info("Connected to %s:%s!", addrcanon, svc);
         goto exit;
     }
 
@@ -98,7 +94,6 @@ int socket_connect(const char *host, const char *svc)
 
 exit:
     freeaddrinfo(resolv);
-    log_destroy(&log);
 
     return fd;
 }

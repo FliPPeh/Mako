@@ -1,8 +1,8 @@
 CFLAGS=-I$(INC) -Iinclude/ -Wall -g -fpic
-LDFLAGS=-shared -llua
+LDFLAGS=-shared -llua -lm
 CC=clang
 
-SOURCES=mod_lua.c handlers.c lua_util.c modules/log.c modules/core.c
+SOURCES=mod_lua.c lua_util.c modules/log.c modules/core.c
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
 
 mod_lua.so: objects

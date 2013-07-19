@@ -14,8 +14,6 @@ struct bot
 {
     struct irc_session *sess;
     struct list *modules;
-
-    char trigger;
 };
 
 #endif /* defined _BOT_H_ */

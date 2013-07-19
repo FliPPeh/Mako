@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -12,25 +13,28 @@
 #include "util/log.h"
 #include "util/list.h"
 
+#include "module/module.h"
 
-int mod_lua_call(const char *fn, const char *argtypes, ...)
+
+int mod_lua_dispatch(enum mod_event_type type, const char *argtypes, ...)
 {
-    struct log_context log;
+    const char *fn = "__handle_event";
     va_list args;
-    int nargs = 0;
+    int nargs = 1;
 
-    log_derive(&log, &mod_lua_state.log, __func__);
     lua_State *L = mod_lua_state.L;
 
     lua_getglobal(L, fn);
     if (!lua_isfunction(L, -1)) {
-
         lua_pop(L, 1);
 
-        log_error(&log, "attempt to call global non-function or nil '%s'", fn);
-        log_destroy(&log);
+        log_error_n("mod_lua",
+                "attempt to call global non-function or nil '%s'", fn);
+
         return 1;
     }
+
+    lua_pushstring(L, _mod_event_name[type]);
 
     if (argtypes) {
         va_start(args, argtypes);
@@ -46,7 +50,8 @@ int mod_lua_call(const char *fn, const char *argtypes, ...)
                 break;
 
             case 'm':
-                lua_util_push_irc_message(L, va_arg(args, struct irc_message *));
+                lua_util_push_irc_message(L,
+                        va_arg(args, struct irc_message *));
                 nargs++;
                 break;
 
@@ -61,7 +66,7 @@ int mod_lua_call(const char *fn, const char *argtypes, ...)
                 break;
 
             default:
-                log_warn(&log, "Unknown argtype '%c'", *argtypes);
+                log_warn_n("mod_lua", "Unknown argtype '%c'", *argtypes);
             }
 
            argtypes++;
@@ -71,7 +76,7 @@ int mod_lua_call(const char *fn, const char *argtypes, ...)
     }
 
     if (lua_pcall(L, nargs, 0, 0) != 0) {
-        log_error(&log, "Error calling '%s' in corelib: %s",
+        log_error_n("mod_lua", "Error calling '%s' in corelib: %s",
                 fn, lua_tostring(L, -1));
 
         lua_pop(L, 1);
@@ -79,7 +84,6 @@ int mod_lua_call(const char *fn, const char *argtypes, ...)
 
     lua_pop(L, -1);
 
-    log_destroy(&log);
     return 0;
 }
 

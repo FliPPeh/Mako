@@ -20,8 +20,6 @@ void irc_channel_free(void *data)
 /* Channel management */
 int irc_channel_add(struct list **chanlist, const char *chan)
 {
-    ASSERT(chan != NULL, LOG_WARNING, return 1);
-
     *chanlist = list_append(*chanlist, _irc_channel_new(chan));
 
     return 0;
@@ -29,8 +27,6 @@ int irc_channel_add(struct list **chanlist, const char *chan)
 
 int irc_channel_del(struct list **chanlist, struct irc_channel *chan)
 {
-    ASSERT(chan != NULL, LOG_WARNING, return 1);
-
     *chanlist = list_remove(*chanlist, chan, irc_channel_free);
 
     return 0;
@@ -46,11 +42,33 @@ struct irc_channel *irc_channel_get(struct list *chanlist, const char *chan)
     return NULL;
 }
 
+int irc_channel_set_topic(struct irc_channel *chan, const char *topic)
+{
+    strncpy(chan->topic, topic, sizeof(chan->topic) - 1);
+
+    return 0;
+}
+
+int irc_channel_set_created(struct irc_channel *chan, time_t created)
+{
+    chan->created = created;
+
+    return 0;
+}
+
+int irc_channel_set_topic_meta(
+        struct irc_channel *chan, const char *setter, time_t set)
+{
+    strncpy(chan->topic_setter, setter, sizeof(chan->topic_setter) - 1);
+    chan->topic_set = set;
+
+    return 0;
+}
+
+
 /* Channel user management */
 int irc_channel_add_user(struct irc_channel *chan, const char *prefix)
 {
-    ASSERT(chan != NULL, LOG_WARNING, return 1);
-
     chan->users = list_append(chan->users, _irc_user_new(prefix));
 
     return 0;
@@ -58,9 +76,6 @@ int irc_channel_add_user(struct irc_channel *chan, const char *prefix)
 
 int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user)
 {
-    ASSERT(chan != NULL, LOG_WARNING, return 1);
-    ASSERT(user != NULL, LOG_WARNING, return 1);
-
     chan->users = list_remove(chan->users, user, free);
 
     return 0;
@@ -69,8 +84,6 @@ int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user)
 struct irc_user *irc_channel_get_user(struct irc_channel *chn, const char *usr)
 {
     struct list *luser = NULL;
-
-    ASSERT(chn != NULL, LOG_WARNING, return NULL);
 
     if ((luser = list_find_custom(chn->users, usr,
                     _irc_channel_user_find_by_prefix)))
@@ -86,8 +99,6 @@ struct irc_user *irc_channel_get_user(struct irc_channel *chn, const char *usr)
 /* Mode lists (+b, +e, ...) */
 int irc_channel_add_mode(struct irc_channel *c, char mode, const char *arg)
 {
-    ASSERT(c != NULL, LOG_WARNING, return 1);
-
     c->modes = list_append(c->modes, _irc_mode_new(mode, arg));
 
     return 0;
@@ -96,8 +107,6 @@ int irc_channel_add_mode(struct irc_channel *c, char mode, const char *arg)
 int irc_channel_del_mode(struct irc_channel *c, char mode, const char *arg)
 {
     struct list *pos = NULL;
-
-    ASSERT(c != NULL, LOG_WARNING, return 1);
 
 again:
     LIST_FOREACH(c->modes, pos) {
@@ -119,8 +128,6 @@ int irc_channel_set_mode(struct irc_channel *c, char mode, const char *arg)
 {
     struct list *pos = NULL;
     struct irc_mode *m = NULL;
-
-    ASSERT(c != NULL, LOG_WARNING, return 1);
 
     /* Try to find mode in list first */
     if ((pos = list_find_custom(c->modes, &mode, _irc_mode_find_by_flag))) {
@@ -144,8 +151,6 @@ int irc_channel_unset_mode(struct irc_channel *c, char mode)
 {
     struct list *pos = NULL;
 
-    ASSERT(c != NULL, LOG_WARNING, return 1);
-
     if ((pos = list_find_custom(c->modes, &mode, _irc_mode_find_by_flag)))
         c->modes = list_remove_link(c->modes, pos, free);
 
@@ -154,8 +159,6 @@ int irc_channel_unset_mode(struct irc_channel *c, char mode)
 
 int irc_channel_user_set_mode(struct irc_user *u, char mode)
 {
-    ASSERT(u != NULL, LOG_WARNING, return 1);
-
     if (!strchr(u->modes, mode) && strlen(u->modes) < IRC_FLAGS_MAX - 1)
         u->modes[strlen(u->modes)] = mode;
 
@@ -165,8 +168,6 @@ int irc_channel_user_set_mode(struct irc_user *u, char mode)
 int irc_channel_user_unset_mode(struct irc_user *u, char mode)
 {
     char *pos = NULL;
-
-    ASSERT(u != NULL, LOG_WARNING, return 1);
 
     if ((pos = strchr(u->modes, mode))) {
         memmove(pos, pos + 1, strlen(u->modes) - (pos - u->modes));
@@ -197,10 +198,8 @@ int _irc_mode_find_by_flag(const void *list, const void *data)
 struct irc_user *_irc_user_new(const char *pref)
 {
     struct irc_user *usr = malloc(sizeof(*usr));
-    ASSERT(usr != NULL, LOG_ERROR, return NULL);
 
     memset(usr, 0, sizeof(*usr));
-
     strncpy(usr->prefix, pref, sizeof(usr->prefix) - 1);
 
     return usr;
@@ -209,10 +208,8 @@ struct irc_user *_irc_user_new(const char *pref)
 struct irc_channel *_irc_channel_new(const char *name)
 {
     struct irc_channel *chn = malloc(sizeof(*chn));
-    ASSERT(chn != NULL, LOG_ERROR, return NULL);
 
     memset(chn, 0, sizeof(*chn));
-
     strncpy(chn->name, name, sizeof(chn->name) - 1);
 
     return chn;
@@ -221,7 +218,6 @@ struct irc_channel *_irc_channel_new(const char *name)
 struct irc_mode *_irc_mode_new(char mode, const char *arg)
 {
     struct irc_mode *mod  = malloc(sizeof(*mod));
-    ASSERT(mod != NULL, LOG_ERROR, return NULL);
 
     memset(mod, 0, sizeof(*mod));
 

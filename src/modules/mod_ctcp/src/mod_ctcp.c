@@ -17,9 +17,11 @@ int ctcp_handle_ctcp(
 
 struct mod mod_info = {
     .name = "CTCP",
-    .descr = "Provide default CTCP replies"
-};
+    .descr = "Provide default CTCP replies",
 
+    .hooks = MASK(EVENT_PUBLIC_CTCP_REQUEST)
+           | MASK(EVENT_PRIVATE_CTCP_REQUEST)
+};
 
 int mod_init()
 {
@@ -33,10 +35,21 @@ int mod_exit()
 
 int mod_handle_event(struct mod_event *event)
 {
-    if (event->type == EVENT_CTCPREQ) {
-        struct mod_event_ctcp_req *req = &event->ctcp_req;
+    switch (event->type) {
+    case EVENT_PRIVATE_CTCP_REQUEST:
+    case EVENT_PUBLIC_CTCP_REQUEST:
+        ;; /* hack! */
+        struct mod_event_command *req = &event->command;
 
-        return ctcp_handle_ctcp(req->prefix, req->target, req->ctcp, req->arg);
+        return ctcp_handle_ctcp(
+                req->prefix,
+                req->target,
+                req->command,
+                req->args);
+    default:
+        /* We may have bigger problems if this is ever reached... */
+        log_warn_n("mod_ctcp", "Called for unknown event %X", event->type);
+        break;
     }
 
     return 0;

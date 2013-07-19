@@ -5,8 +5,10 @@
 
 #include "irc/irc.h"
 
+#include "module/module.h"
 
-int mod_lua_call(const char *fn, const char *argtypes, ...);
+
+int mod_lua_dispatch(enum mod_event_type type, const char *argtypes, ...);
 
 /*
  * Pushers

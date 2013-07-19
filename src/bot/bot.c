@@ -50,8 +50,8 @@ int main(int argc, char **argv)
         { NULL,   no_argument,       NULL,  0  }
     };
 
-    log_init(NULL, "bot", NULL);
-    log_set_minlevel(NULL, LOG_DEBUG);
+    log_init(NULL);
+    log_set_minlevel(LOG_DEBUG);
 
     memset(&sess, 0, sizeof(sess));
     memset(&bot, 0, sizeof(bot));
@@ -107,8 +107,7 @@ int main(int argc, char **argv)
 
             case '?':
                 /* Handle unknown flag */
-                log_info(NULL, "%s --help for additional information\n",
-                        argv[0]);
+                log_info("%s --help for additional information\n", argv[0]);
                 return 1;
 
             default:
@@ -117,20 +116,19 @@ int main(int argc, char **argv)
     }
 
     if (!strcmp(sess.hostname, "")) {
-        log_fatal(NULL, "no hostname given, see --help for more information.");
+        log_fatal("no hostname given, see --help for more information.");
 
         return 1;
     }
 
-    bot.trigger = DEFAULT_TRIGGER;
     setup_callbacks(&bot);
 
     if (autoload) {
-        log_info(NULL, "Autoloading modules...");
+        log_info("Autoloading modules...");
         mod_load_autoload(&bot, "autoload.cfg");
     }
 
-    log_info(NULL, "Starting session...");
+    log_info("Starting session...");
 
     _bot_kill = &sess.kill;
     signal(SIGINT, sigint);
@@ -138,7 +136,7 @@ int main(int argc, char **argv)
     sess_main(&sess);
 
     list_free_all(bot.modules, mod_free);
-    log_info(NULL, "Goodbye!");
+    log_info("Goodbye!");
 
     return 0;
 }

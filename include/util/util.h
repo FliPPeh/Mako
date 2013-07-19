@@ -14,7 +14,7 @@ const char *itoa(int i);
 #ifdef DEBUG
 #   define ASSERT(cond, lev, action)                                    \
         if (!(cond)) {                                                  \
-            log_logf(NULL, (lev), "%s:%d (%s): assertion `%s` failed",  \
+            log_logf((lev), "%s:%d (%s): assertion `%s` failed",        \
                     __FILE__,                                           \
                     __LINE__,                                           \
                     __func__,                                           \

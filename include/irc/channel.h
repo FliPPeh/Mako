@@ -37,6 +37,11 @@ int irc_channel_add(struct list **chanlist, const char *chan);
 int irc_channel_del(struct list **chanlist, struct irc_channel *chan);
 struct irc_channel *irc_channel_get(struct list *chanlist, const char *chan);
 
+int irc_channel_set_created(struct irc_channel *chan, time_t created);
+int irc_channel_set_topic(struct irc_channel *chan, const char *topic);
+int irc_channel_set_topic_meta(
+        struct irc_channel *chan, const char *setter, time_t set);
+
 /* Channel user management */
 int irc_channel_add_user(struct irc_channel *chan, const char *prefix);
 int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user);
