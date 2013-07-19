@@ -17,10 +17,11 @@
 
 int mod_load(struct bot *bot, const char *name)
 {
+    void *lib_handle = NULL;
+
     int (*init)();
     int (*modhandler)(struct mod_event *);
 
-    void *lib_handle = NULL;
     char path[512] = {0};
 
     struct mod *modstate = NULL;
@@ -38,22 +39,24 @@ int mod_load(struct bot *bot, const char *name)
 
     if (!(lib_handle = dlopen(path, RTLD_LAZY))) {
         log_error("Error loading '%s': %s", path, dlerror());
+
         goto exit_err_noalloc;
     }
 
     mod = malloc(sizeof(struct mod_loaded));
-    bot->modules = list_append(bot->modules, mod);
-
     mod->dlhandle = lib_handle;
     strncpy(mod->name, name, sizeof(mod->name) - 1);
     strncpy(mod->path, path, sizeof(mod->path) - 1);
 
+    bot->modules = list_append(bot->modules, mod);
+
     if (!(modstate = mod_get_symbol(mod, "info"))) {
         log_error("Couldn't locate module root struct");
+
         goto exit_err;
     } else {
         if (!modstate->name || !modstate->descr)
-            log_error("No module name or description given");
+            log_warn("No module name or description given");
 
         modstate->backref = bot;
         mod->state = modstate;
@@ -61,6 +64,7 @@ int mod_load(struct bot *bot, const char *name)
 
     if (!(modhandler = mod_get_symbol(mod, "handle_event"))) {
         log_error("Couldn't locate module event handlers");
+
         goto exit_err;
     } else {
         mod->handler_func = modhandler;
@@ -92,10 +96,8 @@ int mod_unload(struct bot *bot, struct mod_loaded *mod)
 
 void mod_free(void *arg)
 {
-    struct mod_loaded *mod = arg;
     int (*exit)();
-
-    log_trace("Calling exit handler for '%s'...", mod->path);
+    struct mod_loaded *mod = arg;
 
     if ((exit = mod_get_symbol(mod, "exit"))) {
         exit();
@@ -111,11 +113,9 @@ struct mod_loaded *mod_get(const struct bot *bot, const char *name)
 {
     struct list *ptr = NULL;
 
-    LIST_FOREACH(bot->modules, ptr) {
-        if (!strcmp(((struct mod_loaded *)(ptr->data))->name, name)) {
+    LIST_FOREACH(bot->modules, ptr)
+        if (!strcmp(list_data(ptr, struct mod_loaded *)->name, name))
             return ptr->data;
-        }
-    }
 
     return NULL;
 }

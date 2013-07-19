@@ -26,10 +26,9 @@ int bot_split_ctcp(const char *source,
     memset(dargs, 0, sargs);
 
     if ((argpos = strchr(source, ' '))) {
-        strncpy(dctcp, source + 1,
-                MIN(sctcp - 1, argpos - source - 1));
-        strncpy(dargs, argpos + 1,
-                MIN(sargs - 1, strlen(source) - (argpos - source) - 2));
+        strncpy(dctcp, source + 1, MIN(sctcp - 1, argpos - source - 1));
+        strncpy(dargs, argpos + 1, MIN(sargs - 1,
+                    strlen(source) - (argpos - source) - 2));
     } else {
         strncpy(dctcp, source + 1, strlen(source) - 2);
     }
@@ -44,9 +43,8 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
     LIST_FOREACH(bot->modules, mod) {
         struct mod_loaded *m = list_data(mod, struct mod_loaded *);
 
-        if (m->state->hooks & MASK(ev->type)) {
+        if (m->state->hooks & MASK(ev->type))
             m->handler_func(ev);
-        }
     }
 
     return 0;
@@ -64,20 +62,20 @@ int bot_handle_command(struct bot *bot,
 
     irc_split_prefix(&user, prefix);
 
-    if (!strcmp(cmd, "loadmod")) {
+    if (!strcmp(cmd, "load_so")) {
         if (!mod_load(bot, args)) {
             struct mod_loaded *mod = mod_get(bot, args);
 
             irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
                     "Successfully loaded module '%s' (%s)",
-                        mod->path, mod->state->name);
+                    mod->path, mod->state->name);
         } else {
             irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
                 "Failed loading module './%s.so'", args);
         }
 
         sess_sendmsg(bot->sess, &response);
-    } else if (!strcmp(cmd, "unloadmod")) {
+    } else if (!strcmp(cmd, "unload_so")) {
         struct mod_loaded *mod = mod_get(bot, args);
 
         if (mod) {
