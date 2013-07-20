@@ -6,9 +6,12 @@
 #include <dlfcn.h>
 
 #include "bot/bot.h"
+#include "bot/admins.h"
 #include "bot/module.h"
+
 #include "util/list.h"
 #include "util/log.h"
+#include "util/util.h"
 
 #include "irc/irc.h"
 #include "irc/session.h"
@@ -183,9 +186,9 @@ struct list *mod_get_channels(const struct mod *mod)
     return mod_to_bot(mod)->sess->channels;
 }
 
-const char *mod_get_reguser(const struct mod *mod, const char *prefix)
+const struct admin *mod_get_reguser(const struct mod *mod, const char *prefix)
 {
-    return bot_get_reguser(mod_to_bot(mod), prefix);
+    return admins_get_by_mask(mod_to_bot(mod), prefix);
 }
 
 int mod_load_autoload(struct bot *bot, const char *file)
@@ -194,20 +197,16 @@ int mod_load_autoload(struct bot *bot, const char *file)
     FILE *f;
 
     if (!(f = fopen(file, "r"))) {
-        log_error("Failed opening '%s' for reading: %s", file, strerror(errno));
-
+        log_perror("fopen()", LOG_ERROR);
         return 1;
 
     } else {
         while (fgets(linebuf, sizeof(linebuf), f)) {
             if (strlen(linebuf) > 0) {
-                char *endptr = linebuf + strlen(linebuf) - 1;
+                char *line = strstrp(linebuf);
 
-                while (isspace(*endptr))
-                    *(endptr--) = '\0';
-
-                if (mod_load(bot, linebuf))
-                    log_error("Failed loading './%s.so'", linebuf);
+                if (mod_load(bot, line))
+                    log_error("Failed loading './%s.so'", line);
             }
 
             memset(linebuf, 0, sizeof(linebuf));

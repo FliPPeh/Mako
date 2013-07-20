@@ -3,6 +3,7 @@
 
 #include "bot/handlers.h"
 #include "bot/bot.h"
+#include "bot/admins.h"
 #include "bot/module.h"
 
 #include "module/module.h"
@@ -20,19 +21,20 @@ int bot_split_ctcp(const char *source,
         char *dctcp, size_t sctcp,
         char *dargs, size_t sargs)
 {
-    const char *argpos = NULL;
+    char copy[IRC_MESSAGE_MAX] = {0};
+    char *line = NULL;
+    char *ptr = NULL;
+
+
+    strncpy(copy, source, sizeof(copy) - 1);
 
     memset(dctcp, 0, sctcp);
     memset(dargs, 0, sargs);
 
-    if ((argpos = strchr(source, ' '))) {
-        strncpy(dctcp, source + 1,
-                MIN(sctcp - 1, (size_t)(argpos - source) - 1));
+    line = strstrp(copy);
 
-        strncpy(dargs, argpos + 1,
-                MIN(sargs - 1, strlen(source) - (size_t)(argpos - source) - 2));
-    } else {
-        strncpy(dctcp, source + 1, strlen(source) - 2);
+    if (!(ptr = strpart(line, ' ', dctcp, sctcp - 1, dargs, sargs - 1))) {
+        strncpy(dctcp, line, sctcp - 1);
     }
 
     return 0;
@@ -62,43 +64,45 @@ int bot_handle_command(struct bot *bot,
     struct irc_message response;
     int priv = !irc_is_channel(target);
 
-    irc_split_prefix(&user, prefix);
+    if (admins_get_by_mask(bot, prefix)) {
+        irc_split_prefix(&user, prefix);
 
-    if (!strcmp(cmd, "load_so")) {
-        if (!mod_load(bot, args)) {
+        if (!strcmp(cmd, "load_so")) {
+            if (!mod_load(bot, args)) {
+                struct mod_loaded *mod = mod_get(bot, args);
+
+                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
+                        "Successfully loaded module '%s' (%s)",
+                        mod->path, mod->state->name);
+            } else {
+                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
+                    "Failed loading module './%s.so'", args);
+            }
+
+            sess_sendmsg(bot->sess, &response);
+        } else if (!strcmp(cmd, "unload_so")) {
             struct mod_loaded *mod = mod_get(bot, args);
 
-            irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                    "Successfully loaded module '%s' (%s)",
-                    mod->path, mod->state->name);
-        } else {
-            irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                "Failed loading module './%s.so'", args);
-        }
-
-        sess_sendmsg(bot->sess, &response);
-    } else if (!strcmp(cmd, "unload_so")) {
-        struct mod_loaded *mod = mod_get(bot, args);
-
-        if (mod) {
-            if (!mod_unload(bot, mod))
+            if (mod) {
+                if (!mod_unload(bot, mod))
+                    irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
+                        "Successfully unloaded module './%s.so'", args);
+                else
+                    irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
+                        "Failed unloading module '%s'", args);
+            } else {
                 irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                    "Successfully unloaded module './%s.so'", args);
-            else
-                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                    "Failed unloading module '%s'", args);
-        } else {
-            irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                "No such module './%s.so'", args);
+                    "No such module './%s.so'", args);
+            }
+
+            sess_sendmsg(bot->sess, &response);
+        } else if (!strcmp(cmd, "echo")) {
+            irc_mkprivmsg_resp(&response,
+                    irc_proper_target(target, user.nick), user.nick,
+                    "%s", args);
+
+            sess_sendmsg(bot->sess, &response);
         }
-
-        sess_sendmsg(bot->sess, &response);
-    } else if (!strcmp(cmd, "echo")) {
-        irc_mkprivmsg_resp(&response,
-                irc_proper_target(target, user.nick), user.nick,
-                "%s", args);
-
-        sess_sendmsg(bot->sess, &response);
     }
 
     return bot_dispatch_event(bot, &(struct mod_event) {
@@ -149,27 +153,35 @@ int bot_on_privmsg(void *arg,
         if ((strstr(msg, bot->sess->nick) == msg) &&
              strchr(TRIGGERS, msg[strlen(bot->sess->nick)])) {
 
-            const char *start = msg + strlen(bot->sess->nick) + 1;
+            /* Start of the line after strstrp() */
+            char *start = NULL;
+
+            /* Result or strpart() */
             char *ptr = NULL;
 
+            /* Destination buffers for strpart() */
             char cmd[32] = {0};
             char args[256] = {0};
 
+            /* Working copy for strstrp() and strpart() */
             char copy[IRC_MESSAGE_MAX] = {0};
 
-            while (isspace(*start))
-                start++;
 
-            strncpy(copy, start, sizeof(copy) - 1);
+            /* Copy message (offset past trigger) to working copy */
+            strncpy(copy, msg + strlen(bot->sess->nick) + 1, sizeof(copy) - 1);
 
-            if ((ptr = strtok(copy, " "))) {
-                strncpy(cmd, ptr, sizeof(cmd) - 1);
+            /* Strip whitespace, if any */
+            start = strstrp(copy);
 
-                if ((ptr = strtok(NULL, "")))
-                    strncpy(args, ptr, sizeof(arg) - 1);
-
+            /* Split args, if any */
+            if ((ptr = strpart(start, ' ',
+                            cmd, sizeof(cmd) - 1,
+                            args, sizeof(args) - 1))) {
                 return bot_handle_command(bot, prefix, target, cmd, args);
+            } else {
+                return bot_handle_command(bot, prefix, target, start, NULL);
             }
+
         } else {
             int priv = !irc_is_channel(target);
 

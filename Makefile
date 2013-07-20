@@ -1,6 +1,6 @@
 CFLAGS=-Iinclude/ -Wall -g
 LDFLAGS=-ldl -Wl,-export-dynamic
-SOURCES=bot/bot.c bot/module.c bot/handlers.c 				\
+SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/admins.h  \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
 		util/list.c util/log.c util/util.c

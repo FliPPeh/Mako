@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include "bot/bot.h"
+#include "bot/admins.h"
 #include "bot/handlers.h"
 #include "bot/module.h"
 
@@ -127,7 +128,7 @@ int main(int argc, char **argv)
     setup_callbacks(&bot);
 
     log_info("Loading admin list...");
-    load_admins(&bot, "admins.cfg");
+    admins_load(&bot, "admins.cfg");
 
     if (autoload) {
         log_info("Autoloading modules...");
@@ -142,6 +143,8 @@ int main(int argc, char **argv)
     sess_main(&sess);
 
     log_debug("Cleaning up...");
+
+    admins_save(&bot, "admins.cfg");
 
     list_free_all(bot.modules, mod_free);
     list_free_all(bot.admins, free);
@@ -191,67 +194,4 @@ void setup_callbacks(const struct bot *bot)
     cb->on_connect = bot_on_connect;
     cb->on_disconnect = bot_on_disconnect;
     cb->on_idle = bot_on_idle;
-}
-
-const char *bot_get_reguser(const struct bot *bot, const char *prefix)
-{
-    struct list *ptr = NULL;
-
-    LIST_FOREACH(bot->admins, ptr) {
-        struct admin *adm = list_data(ptr, struct admin *);
-
-        if (regex_match(adm->mask, prefix))
-            return adm->name;
-    }
-
-    return NULL;
-}
-
-void load_admins(struct bot *bot, const char *file)
-{
-    char linebuf[512] = {0};
-    FILE *f;
-
-    if (!(f = fopen(file, "r"))) {
-        log_error("Failed opening '%s' for reading: %s", file, strerror(errno));
-        return;
-    } else {
-        list_free_all(bot->admins, free);
-        bot->admins = NULL;
-
-        while (fgets(linebuf, sizeof(linebuf), f)) {
-            if (strlen(linebuf) > 0) {
-                char *endptr = linebuf + strlen(linebuf) - 1;
-
-                while (isspace(*endptr))
-                    *(endptr--) = '\0';
-
-                char *sep = strchr(linebuf, ':');
-
-                if (!sep) {
-                    continue;
-                } else {
-                    struct admin *adm = malloc(sizeof(*adm));
-                    memset(adm, 0, sizeof(*adm));
-
-                    *sep = '\0';
-
-                    strncpy(adm->name, linebuf,
-                       MIN(sizeof(adm->name) - 1, (size_t)(sep - linebuf)));
-
-                    strncpy(adm->mask, sep + 1,
-                       MIN(sizeof(adm->mask) - 1,
-                           strlen(linebuf) - (size_t)(sep - linebuf) - 2));
-
-                    log_debug("Name: '%s', RegEx: '%s'", adm->name, adm->mask);
-                    bot->admins = list_append(bot->admins, adm);
-                }
-            }
-
-            memset(linebuf, 0, sizeof(linebuf));
-        }
-    }
-
-    fclose(f);
-    return;
 }

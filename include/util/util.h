@@ -10,6 +10,28 @@
  * Util
  */
 const char *itoa(int i);
+
+/*
+ * String utils
+ */
+
+/*
+ * Strip leading and trailing whitespace, returns the new beginning
+ * of the string
+ */
+char *strstrp(char *src);
+
+/*
+ * Split the source string at the first occurence of a separater, storing the
+ * parts into the destination buffers.
+ *
+ * Returns a pointer to the first character after the separater for easier
+ * chaining.
+ */
+char *strpart(const char *src, char sep,
+        char *desta, size_t sizea,
+        char *destb, size_t sizeb);
+
 int regex_match(const char *regex, const char *str);
 
 #ifdef DEBUG

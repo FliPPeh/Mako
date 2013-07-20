@@ -137,6 +137,20 @@ int _log_vlogtofilep(
     return 0;
 }
 
+/*
+ * Utility function to replace perror
+ */
+void log_perror(const char *p, enum loglevel lv)
+{
+    log_perror_n(NULL, p, lv);
+}
+
+void log_perror_n(const char *n, const char *p, enum loglevel lv)
+{
+    log_logf(lv, n, "%s: %s", p, strerror(errno));
+}
+
+
 #define X(lvl, name, fun, prefmt, postfmt)  \
     void fun(const char *fmt, ...)          \
     {                                       \

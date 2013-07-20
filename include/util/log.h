@@ -90,6 +90,12 @@ int _log_vlogtofilep(
         va_list args);
 
 /*
+ * Utility function to replace perror
+ */
+void log_perror(const char *p, enum loglevel dv);
+void log_perror_n(const char *n, const char *p, enum loglevel dv);
+
+/*
  * Generate specialized logging functions (log_info, log_warn, ...)
  *
  * If nam is not NULL, nam will be temporarily pushed for the current call.
