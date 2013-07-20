@@ -19,8 +19,7 @@ struct mod mod_info = {
     .name = "CTCP",
     .descr = "Provide default CTCP replies",
 
-    .hooks = MASK(EVENT_PUBLIC_CTCP_REQUEST)
-           | MASK(EVENT_PRIVATE_CTCP_REQUEST)
+    .hooks = MASK(EVENT_PRIVATE_CTCP_REQUEST)
 };
 
 int mod_init()
@@ -37,7 +36,6 @@ int mod_handle_event(struct mod_event *event)
 {
     switch (event->type) {
     case EVENT_PRIVATE_CTCP_REQUEST:
-    case EVENT_PUBLIC_CTCP_REQUEST:
         ;; /* hack! */
         struct mod_event_command *req = &event->command;
 

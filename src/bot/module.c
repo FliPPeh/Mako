@@ -150,12 +150,12 @@ void *mod_get_symbol(const struct mod_loaded *mod, const char *sym)
 /*
  * Functions exported in module/module.h
  */
-int mod_sendmsg(const struct mod *mod, const struct irc_message *msg)
+ssize_t mod_sendmsg(const struct mod *mod, const struct irc_message *msg)
 {
     return sess_sendmsg(mod_to_bot(mod)->sess, msg);
 }
 
-int mod_sendln(const struct mod *mod, const char *ln)
+ssize_t mod_sendln(const struct mod *mod, const char *ln)
 {
     return socket_sendfln(mod_to_bot(mod)->sess->fd, "%s", ln);
 }

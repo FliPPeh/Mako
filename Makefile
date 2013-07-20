@@ -4,7 +4,7 @@ SOURCES=bot/bot.c bot/module.c bot/handlers.c 				\
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
 		util/list.c util/log.c util/util.c
-CC=clang
+CC=clang -Wextra -std=gnu11
 #CC=gcc
 
 

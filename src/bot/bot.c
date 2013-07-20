@@ -19,10 +19,11 @@
 /*
  * Startup
  */
+void sigint(int sig);
 int print_usage(const char *prgname);
 void setup_callbacks(struct bot *bot);
 
-int *_bot_kill = NULL;
+static int *_bot_kill = NULL;
 
 void sigint(int sig)
 {

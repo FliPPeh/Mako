@@ -20,7 +20,7 @@ int sess_getln(struct irc_session *sess, char *linebuf, size_t linebufsiz)
     char *crlf = NULL;
 
     if ((crlf = strstr(sess->buffer, "\r\n"))) {
-        size_t len = crlf - sess->buffer;
+        size_t len = (size_t)(crlf - sess->buffer);
 
         /* bufuse = buffer usage after line has been taken out */
         sess->bufuse -= len + 2;
@@ -64,7 +64,7 @@ int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg)
 
     log_debug(">> %s", buffer);
 
-    return socket_sendfln(sess->fd, "%s", buffer);
+    return socket_sendfln(sess->fd, "%s", buffer) > 0;
 }
 
 int sess_connect(struct irc_session *sess)
@@ -140,7 +140,7 @@ int sess_main(struct irc_session *sess)
                     break;
                 }
 
-                sess->bufuse += data;
+                sess->bufuse += (size_t)data;
 
                 /*
                  * While the last blob of data received contains a full line,
@@ -306,8 +306,8 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
     } else if (!strcmp(msg->command, "352")) {
         /* REPL_WHO */
-        int j;
-        int i;
+        size_t j;
+        size_t i;
         char prefix[IRC_PREFIX_MAX] = {0};
 
         /* TODO: Error check */
@@ -532,8 +532,8 @@ int sess_handle_mode_change(
         size_t argstart)
 {
     int set = 1; /* 1 = set, 0 = unset */
-    int i = argstart;
-    int j = 0;
+    size_t i = argstart;
+    size_t j = 0;
 
     struct irc_channel *t = NULL;
 

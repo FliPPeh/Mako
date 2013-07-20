@@ -146,6 +146,12 @@ function irc.channel:find_user(target)
     error(string.format('no such user %q in channel  %q', nick, self.name), 2)
 end
 
+function irc.channel:try_find_user(target)
+    local ok, ret = pcall(self.find_user, self, target)
+
+    return ok and ret or nil
+end
+
 function irc.channel_meta:__tostring()
     return self.name
 end

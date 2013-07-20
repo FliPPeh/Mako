@@ -26,9 +26,11 @@ int bot_split_ctcp(const char *source,
     memset(dargs, 0, sargs);
 
     if ((argpos = strchr(source, ' '))) {
-        strncpy(dctcp, source + 1, MIN(sctcp - 1, argpos - source - 1));
-        strncpy(dargs, argpos + 1, MIN(sargs - 1,
-                    strlen(source) - (argpos - source) - 2));
+        strncpy(dctcp, source + 1,
+                MIN(sctcp - 1, (size_t)(argpos - source) - 1));
+
+        strncpy(dargs, argpos + 1,
+                MIN(sargs - 1, strlen(source) - (size_t)(argpos - source) - 2));
     } else {
         strncpy(dctcp, source + 1, strlen(source) - 2);
     }
@@ -151,7 +153,7 @@ int bot_on_privmsg(void *arg,
             char *ptr = NULL;
 
             char cmd[32] = {0};
-            char arg[256] = {0};
+            char args[256] = {0};
 
             char copy[IRC_MESSAGE_MAX] = {0};
 
@@ -164,9 +166,9 @@ int bot_on_privmsg(void *arg,
                 strncpy(cmd, ptr, sizeof(cmd) - 1);
 
                 if ((ptr = strtok(NULL, "")))
-                    strncpy(arg, ptr, sizeof(arg) - 1);
+                    strncpy(args, ptr, sizeof(arg) - 1);
 
-                return bot_handle_command(bot, prefix, target, cmd, arg);
+                return bot_handle_command(bot, prefix, target, cmd, args);
             }
         } else {
             int priv = !irc_is_channel(target);

@@ -170,7 +170,7 @@ int irc_channel_user_unset_mode(struct irc_user *u, char mode)
     char *pos = NULL;
 
     if ((pos = strchr(u->modes, mode))) {
-        memmove(pos, pos + 1, strlen(u->modes) - (pos - u->modes));
+        memmove(pos, pos + 1, strlen(u->modes) - (size_t)(pos - u->modes));
 
         return 0;
     }

@@ -102,7 +102,13 @@ signal = {
 
 function signal.bind_multi(sigtype, handler)
     return signal.bind(sigtype, function(...)
-        handler(sigtype, ...)
+        return handler(sigtype, ...)
+    end)
+end
+
+function signal.bind_multi_raw(sigtype, handler)
+    return signal.bind_raw(sigtype, function(...)
+        return handler(sigtype, ...)
     end)
 end
 
@@ -114,6 +120,144 @@ end
 --
 -- Also, you need it to unbind the handler.
 function signal.bind(sigtype, handler)
+    local substitutes = {}
+
+    --
+    -- public_message, public_notice, public_action
+    --
+    function substitutes.public_message(prefix, channel, msg)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan, msg)
+    end
+
+    substitutes.public_notice = substitutes.public_message
+    substitutes.public_action = substitutes.public_message
+
+    --
+    -- private_message, private_notice, private_action
+    --
+    function substitutes.private_message(prefix, msg)
+        local user = irc.source.new(prefix)
+
+        return handler(user, msg)
+    end
+
+    substitutes.private_notice = substitutes.private_message
+    substitutes.private_action = substitutes.private_message
+
+    --
+    -- join, part, quit, kick, nick, invite, topic
+    --
+    function substitutes.join(prefix, channel)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan)
+    end
+
+    function substitutes.part(prefix, channel, reason)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan, reason)
+    end
+
+    function substitutes.quit(prefix, reason)
+        local user = irc.user.new(channel)
+
+        return handler(user, reason)
+    end
+
+    function substitutes.kick(prefix_kicker, prefix_kicked, channel, reason)
+        local chan = irc.channel.new(channel)
+        local kicker = chan:try_find_user(prefix_kicker)
+            or irc.source.new(prefix_kicker)
+
+        local kicked = chan:try_find_user(prefix_kicked)
+            or irc.source.new(prefix_kicked)
+
+        return handler(kicker, kicked, chan, reason)
+    end
+
+    function substitutes.nick(prefix_old, prefix_new)
+        local user_old = irc.user.new(prefix_old)
+        local user_new = irc.user.new(prefix_new)
+
+        return handler(user_old, user_new)
+    end
+
+    function substitutes.invite(prefix, channel)
+        local user = irc.user.new(prefix)
+
+        return handler(user, channel)
+    end
+
+    function substitutes.topic(prefix, channel, topic_old, topic_new)
+        local chan = irc.channel.new(channel)
+        local setter = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(setter, chan, topic_old, topic_new)
+    end
+
+    --
+    -- channel_modes_raw, channel_mode_set, channel_mode_unset
+    --
+    function substitutes.channel_modes_raw(prefix, channel, modes)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan, modes)
+    end
+
+    function substitutes.channel_mode_set(prefix, channel, mode, arg)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan, mode, arg)
+    end
+
+    substitutes.channel_mode_unset = substitutes.channel_mode_set
+
+    --
+    -- public_command, public_ctcp_request, public_ctcp_response
+    --
+    function substitutes.public_command(prefix, channel, cmd, args)
+        local chan = irc.channel.new(channel)
+        local user = chan:try_find_user(prefix) or irc.source.new(prefix)
+
+        return handler(user, chan, cmd, args)
+    end
+
+    substitutes.public_ctcp_request = substitutes.public_command
+    substitutes.public_ctcp_response = substitutes.public_command
+
+    --
+    -- private_command, private_ctcp_request, private_ctcp_response
+    --
+    function substitutes.private_command(prefix, cmd, args)
+        local user = irc.source.new(prefix)
+
+        return handler(user, cmd, args)
+    end
+
+    substitutes.private_ctcp_request = substitutes.private_command
+    substitutes.private_ctcp_response = substitutes.private_command
+
+    --
+    -- End substitutes
+    --
+
+    if substitutes[sigtype] then
+        return signal.bind_raw(sigtype, substitutes[sigtype])
+    else
+        return signal.bind_raw(sigtype, handler)
+        -- error(string.format('unknown signal %q', sigtype), 2)
+    end
+end
+
+function signal.bind_raw(sigtype, handler)
     if signal.__handlers[sigtype] then
         for i, ohandler in ipairs(signal.__handlers[sigtype]) do
             if ohandler == handler then
@@ -145,8 +289,12 @@ function signal.dispatch(sigtype, ...)
 
     if signal.__handlers[sigtype] then
         for i, handler in ipairs(signal.__handlers[sigtype]) do
-            log.log('trace', string.format('call handler %s', handler))
-            handler(...)
+            ok, ret = pcall(handler, ...)
+
+            if not ok then
+                log.log('error', string.format('handler %s failed: %s',
+                    handler, ret))
+            end
         end
     end
 end
@@ -218,13 +366,11 @@ end
 -- Root event handler
 ----
 function __handle_event(event, ...)
-    --logger:derive('__handle_event'):log('info', idumper(...))
     signal.dispatch(event, ...)
 end
 
 
 local function __handle_command(rsptgt, command, arg)
-    print(command)
     if command == 'ping' then
         rsptgt:respond('pong')
     end
@@ -233,12 +379,12 @@ end
 
 -- Prevent signals from being GC'd prematurely. (see above)
 bot.__core_signals = {
-    public_command = signal.bind('public_command', function(a, b, c, d)
-        local chan = irc.channel.new(b)
-        __handle_command(chan:find_user(a), c, d)
+    public_command = signal.bind('public_command', function(who, where, what, args)
+        __handle_command(who, what, args)
     end),
 
-    private_command = signal.bind('private_command', function(a, c, d)
-        __handle_command(irc.source.new(a), c, d)
+    private_command = signal.bind('private_command', function(who, what, args)
+        __handle_command(who, what, args)
     end)
 }
+

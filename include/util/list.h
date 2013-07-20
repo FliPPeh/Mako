@@ -18,7 +18,7 @@ typedef void (*list_delete_func)(void *data);
 typedef void *(*list_copy_func)(const void *data, void *userdata);
 
 
-struct list *list_new();
+struct list *list_new(void);
 struct list *list_new_with_data(void *data);
 
 void list_free(struct list *link, list_delete_func fn);

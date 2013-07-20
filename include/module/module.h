@@ -1,6 +1,7 @@
 #ifndef _MODULE_H_
 #define _MODULE_H_
 
+#include <stdlib.h>
 #include <stdint.h>
 
 #include "irc/irc.h"
@@ -207,8 +208,8 @@ extern struct mod mod_info;
  * who would hack around exported functions would also hack around that, so
  * whatever.
  */
-int mod_sendmsg(const struct mod *mod, const struct irc_message *msg);
-int mod_sendln(const struct mod *mod, const char *msg);
+ssize_t mod_sendmsg(const struct mod *mod, const struct irc_message *msg);
+ssize_t mod_sendln(const struct mod *mod, const char *msg);
 int mod_get_identity(const struct mod *mod, struct mod_identity *ident);
 
 struct list *mod_get_server_capabilities(const struct mod *mod);

@@ -24,10 +24,12 @@
 /*
  * Log header output format
  */
-#define LOG_FORMAT_NAMED "\e[1;34m%s\e[0m [\e[1;31m%s\e[0m.\e[0;33m%s\e[0m]: "
+#define LOG_FORMAT_NAMED \
+    "\033[1;34m%s\033[0m [\033[1;31m%s\033[0m.\033[0;33m%s\033[0m]: "
+
 #define LOG_ORDER_NAMED(time, name, level) time, name, level
 
-#define LOG_FORMAT "\e[1;34m%s\e[0m [\e[0;33m%s\e[0m]: "
+#define LOG_FORMAT "\033[1;34m%s\033[0m [\033[0;33m%s\033[0m]: "
 #define LOG_ORDER(time, level) time, level
 
 /*
@@ -43,13 +45,13 @@
  *    terminal format to default.
  */
 #define LOGLEVELS \
-    X(LOG_TRACE,   "trace",   log_trace, "\e[1m", "\e[0m")    \
-    X(LOG_DEBUG,   "debug",   log_debug, "\e[1m", "\e[0m")    \
+    X(LOG_TRACE,   "trace",   log_trace, "\033[1m", "\033[0m")    \
+    X(LOG_DEBUG,   "debug",   log_debug, "\033[1m", "\033[0m")    \
     X(LOG_INFO,    "info",    log_info,  "", "")              \
-    X(LOG_WARNING, "warning", log_warn,  "\e[1;33m", "\e[0m") \
-    X(LOG_ERROR,   "error",   log_error, "\e[1;31m", "\e[0m") \
-    X(LOG_FATAL,   "fatal",   log_fatal, "\e[1;31m", "\e[0m") \
-    X(LOG_WTF,     "wtf?",    log_wtf,   "\e[1;31m", "!?\e[0m")
+    X(LOG_WARNING, "warning", log_warn,  "\033[1;33m", "\033[0m") \
+    X(LOG_ERROR,   "error",   log_error, "\033[1;31m", "\033[0m") \
+    X(LOG_FATAL,   "fatal",   log_fatal, "\033[1;31m", "\033[0m") \
+    X(LOG_WTF,     "wtf?",    log_wtf,   "\033[1;31m", "!?\033[0m")
 
 #define X(lvl, name, fun, prefmt, postfmt) lvl,
 enum loglevel
@@ -74,7 +76,7 @@ extern struct log_context _log_default_logger;
  */
 int log_init(const char *logfile);
 int log_set_minlevel(enum loglevel minlev);
-int log_destroy();
+int log_destroy(void);
 
 
 int log_logf(enum loglevel lv, const char *name, const char *fmt, ...);

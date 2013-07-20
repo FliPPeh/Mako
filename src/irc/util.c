@@ -20,10 +20,14 @@ int irc_split_prefix(struct irc_prefix_parts *dst, const char *prefix)
 
     memset(dst, 0, sizeof(*dst));
 
-    strncpy(dst->nick, prefix, MIN(sizeof(dst->nick) - 1, excl - prefix));
-    strncpy(dst->user, excl + 1, MIN(sizeof(dst->user) - 1, at - excl));
+    strncpy(dst->nick, prefix,
+            MIN(sizeof(dst->nick) - 1, (size_t)(excl - prefix)));
+
+    strncpy(dst->user, excl + 1,
+            MIN(sizeof(dst->user) - 1, (size_t)(at - excl)));
+
     strncpy(dst->host, at + 1,
-            MIN(sizeof(dst->host) - 1, strlen(prefix) - (at - prefix)));
+            MIN(sizeof(dst->host) - 1, strlen(prefix) - (size_t)(at - prefix)));
 
     return 0;
 }

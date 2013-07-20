@@ -110,18 +110,19 @@ ssize_t socket_send(int fd, void *buf, size_t maxsize)
 
 ssize_t socket_sendall(int fd, void *buf, size_t minsize)
 {
-    size_t sent = 0;
-    size_t tosend = minsize;
+    ssize_t sent = 0;
+    ssize_t tosend = (ssize_t)minsize;
 
     while (sent < tosend) {
-        ssize_t out;
+        ssize_t out = socket_send(fd,
+                (unsigned char *)buf + sent, (size_t)tosend);
 
-        if ((out = socket_send(fd, buf + sent, tosend)) < 0) {
+        if (out < 0) {
             return -1;
         } else if (out == 0) {
             break;
         } else {
-            tosend -= out;
+            tosend -= (size_t)out;
             sent += out;
         }
     }
@@ -136,13 +137,14 @@ ssize_t socket_recv(int fd, void *buf, size_t maxsize)
 
 ssize_t socket_recvall(int fd, void *buf, size_t minsize)
 {
-    size_t recvd = 0;
-    size_t torecv = minsize;
+    ssize_t recvd = 0;
+    ssize_t torecv = (ssize_t)minsize;
 
     while (recvd < torecv) {
-        ssize_t in;
+        ssize_t in = socket_recv(fd,
+                (unsigned char *)buf + recvd, (size_t)torecv);
 
-        if ((in = socket_recv(fd, buf + recvd, torecv)) < 0) {
+        if (in < 0) {
             return -1;
         } else if (in == 0) {
             break;
@@ -155,7 +157,7 @@ ssize_t socket_recvall(int fd, void *buf, size_t minsize)
     return recvd;
 }
 
-int socket_sendfln(int fd, const char *fmt, ...)
+ssize_t socket_sendfln(int fd, const char *fmt, ...)
 {
     char buffer[SOCKET_SENDFLNBUF_MAX] = {0};
     va_list args;

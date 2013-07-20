@@ -1,6 +1,6 @@
 CFLAGS=-I$(INC) -Wall -g -fpic
 LDFLAGS=-shared
-CC=clang
+CC=clang -Wextra -std=gnu11
 
 SOURCES=mod_ctcp.c
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))

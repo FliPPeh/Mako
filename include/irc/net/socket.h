@@ -20,6 +20,6 @@ ssize_t socket_sendall(int fd, void *buf, size_t minsize);
 ssize_t socket_recv(int fd, void *buf, size_t maxsize);
 ssize_t socket_recvall(int fd, void *buf, size_t minsize);
 
-int socket_sendfln(int fd, const char *fmt, ...);
+ssize_t socket_sendfln(int fd, const char *fmt, ...);
 
 #endif /* defined _SOCKET_H_ */

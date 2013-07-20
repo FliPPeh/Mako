@@ -28,7 +28,7 @@ int irc_parse_message(const char *line, struct irc_message *msg)
             return 1;
 
         /* Calculate token lenght and skip the space */
-        len = next - prev;
+        len = (size_t)(next - prev);
         while (*next == ' ')
             ++next;
 
@@ -40,7 +40,7 @@ int irc_parse_message(const char *line, struct irc_message *msg)
     if (!(next = strchr(next, ' ')))
         return 1;
 
-    len = next - prev;
+    len = (size_t)(next - prev);
     while (*next == ' ')
         ++next;
 
@@ -49,7 +49,7 @@ int irc_parse_message(const char *line, struct irc_message *msg)
     do {
         prev = next;
         next = strchr(next, ' ') ? strchr(next, ' ') : next + strlen(next);
-        len = next - prev;
+        len = (size_t)(next - prev);
 
         while (*next == ' ')
             ++next;
@@ -99,9 +99,11 @@ int irc_user_cmp(const char *a, const char *b)
      * we can skip the whole address part and compare complete prefixes
      * only until the end of the nick part.
      */
-    int reallen_a = strchr(a, '!') ? (strchr(a, '!') - a) : strlen(a);
-    int reallen_b = strchr(b, '!') ? (strchr(b, '!') - b) : strlen(b);
-    int cmplen = MIN(reallen_a, reallen_b);
+    const char *p = NULL;
+
+    size_t reallen_a = (p = strchr(a, '!')) ? (size_t)(p - a) : strlen(a);
+    size_t reallen_b = (p = strchr(b, '!')) ? (size_t)(p - b) : strlen(b);
+    size_t cmplen = MIN(reallen_a, reallen_b);
 
     return (reallen_a != reallen_b) ? 1 : strncasecmp(a, b, cmplen);
 }

@@ -1,6 +1,6 @@
 CFLAGS=-I$(INC) -Iinclude/ -Wall -g -fpic
 LDFLAGS=-shared -llua -lm
-CC=clang
+CC=clang -Wextra -std=gnu11
 
 SOURCES=mod_lua.c lua_util.c modules/log.c modules/core.c
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
