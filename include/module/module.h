@@ -215,6 +215,7 @@ int mod_get_identity(const struct mod *mod, struct mod_identity *ident);
 struct list *mod_get_server_capabilities(const struct mod *mod);
 struct list *mod_get_channels(const struct mod *mod);
 
+const char *mod_get_reguser(const struct mod *mod, const char *prefix);
 
 /* Elaborate lazyness */
 #define send_message(msg) mod_sendmsg(&mod_info, (msg))
@@ -223,5 +224,7 @@ struct list *mod_get_channels(const struct mod *mod);
 
 #define get_server_capabilities() mod_get_server_capabilities(&mod_info)
 #define get_channels() mod_get_channels(&mod_info)
+
+#define get_reguser(prefix) mod_get_reguser(&mod_info, (prefix))
 
 #endif /* defined _MODULE_H_ */

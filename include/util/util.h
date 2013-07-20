@@ -10,6 +10,7 @@
  * Util
  */
 const char *itoa(int i);
+int regex_match(const char *regex, const char *str);
 
 #ifdef DEBUG
 #   define ASSERT(cond, lev, action)                                    \

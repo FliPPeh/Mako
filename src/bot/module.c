@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <dlfcn.h>
 
+#include "bot/bot.h"
 #include "bot/module.h"
 #include "util/list.h"
 #include "util/log.h"
@@ -37,18 +38,18 @@ int mod_load(struct bot *bot, const char *name)
 
     log_debug("Loading module '%s' ('%s')...", name, path);
 
-    if (!(lib_handle = dlopen(path, RTLD_LAZY))) {
+    if (!(lib_handle = dlopen(path, RTLD_NOW))) {
         log_error("Error loading '%s': %s", path, dlerror());
 
         goto exit_err_noalloc;
     }
 
     mod = malloc(sizeof(struct mod_loaded));
+    memset(mod, 0, sizeof(*mod));
+
     mod->dlhandle = lib_handle;
     strncpy(mod->name, name, sizeof(mod->name) - 1);
     strncpy(mod->path, path, sizeof(mod->path) - 1);
-
-    bot->modules = list_append(bot->modules, mod);
 
     if (!(modstate = mod_get_symbol(mod, "info"))) {
         log_error("Couldn't locate module root struct");
@@ -78,6 +79,7 @@ int mod_load(struct bot *bot, const char *name)
         }
     }
 
+    bot->modules = list_append(bot->modules, mod);
     return 0;
 
 exit_err:
@@ -179,6 +181,11 @@ struct list *mod_get_server_capabilities(const struct mod *mod)
 struct list *mod_get_channels(const struct mod *mod)
 {
     return mod_to_bot(mod)->sess->channels;
+}
+
+const char *mod_get_reguser(const struct mod *mod, const char *prefix)
+{
+    return bot_get_reguser(mod_to_bot(mod), prefix);
 }
 
 int mod_load_autoload(struct bot *bot, const char *file)
