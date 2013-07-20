@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "bot/bot.h"
 #include "irc/irc.h"
 
 
@@ -164,13 +165,6 @@ struct mod_event
     };
 };
 
-struct mod_identity
-{
-    const char *nick;
-    const char *user;
-    const char *real;
-};
-
 /*
  * Top level compound structure combining everything needed to identify a module
  * and provide a backref to the host code.
@@ -193,38 +187,15 @@ struct mod
     uint64_t hooks;
 
     /*
-     * Set via calling code, most likely a reference to the main host
-     * structure, implementation details or layout not relevant to modules.
+     * Set via calling code, a reference to the main host
+     * structure.
      */
-    const void *backref;
+    struct bot *bot;
 };
 
 extern struct mod mod_info;
 
-/*
- * "Officially" exported functions. You could use any function defined anywhere
- * in the host code, but that wouldn't be very nice, would it? Besides, only the
- * exported functions know how to work with a "struct mod_state". But someone
- * who would hack around exported functions would also hack around that, so
- * whatever.
- */
-ssize_t mod_sendmsg(const struct mod *mod, const struct irc_message *msg);
-ssize_t mod_sendln(const struct mod *mod, const char *msg);
-int mod_get_identity(const struct mod *mod, struct mod_identity *ident);
-
-struct list *mod_get_server_capabilities(const struct mod *mod);
-struct list *mod_get_channels(const struct mod *mod);
-
-const struct admin *mod_get_reguser(const struct mod *mod, const char *prefix);
-
-/* Elaborate lazyness */
-#define send_message(msg) mod_sendmsg(&mod_info, (msg))
-#define send_line(msg) mod_sendln(&mod_info, (msg))
-#define get_identity(i) mod_get_identity(&mod_info, (i))
-
-#define get_server_capabilities() mod_get_server_capabilities(&mod_info)
-#define get_channels() mod_get_channels(&mod_info)
-
-#define get_reguser(prefix) mod_get_reguser(&mod_info, (prefix))
+/* For being lazy */
+#define BOTREF (mod_info.bot)
 
 #endif /* defined _MODULE_H_ */

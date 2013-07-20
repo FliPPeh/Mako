@@ -195,3 +195,8 @@ void setup_callbacks(const struct bot *bot)
     cb->on_disconnect = bot_on_disconnect;
     cb->on_idle = bot_on_idle;
 }
+
+int bot_send_message(const struct bot *bot, const struct irc_message *msg)
+{
+    return sess_sendmsg(bot->sess, msg);
+}

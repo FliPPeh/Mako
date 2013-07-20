@@ -62,7 +62,7 @@ int mod_load(struct bot *bot, const char *name)
         if (!modstate->name || !modstate->descr)
             log_warn("No module name or description given");
 
-        modstate->backref = bot;
+        modstate->bot = bot;
         mod->state = modstate;
     }
 
@@ -125,11 +125,6 @@ struct mod_loaded *mod_get(const struct bot *bot, const char *name)
     return NULL;
 }
 
-const struct bot *mod_to_bot(const struct mod *mod)
-{
-    return ((const struct bot *)(mod->backref));
-}
-
 void *mod_get_symbol(const struct mod_loaded *mod, const char *sym)
 {
     char fqsym[512] = {0};
@@ -150,45 +145,6 @@ void *mod_get_symbol(const struct mod_loaded *mod, const char *sym)
     }
 
     return symref;
-}
-
-/*
- * Functions exported in module/module.h
- */
-ssize_t mod_sendmsg(const struct mod *mod, const struct irc_message *msg)
-{
-    return sess_sendmsg(mod_to_bot(mod)->sess, msg);
-}
-
-ssize_t mod_sendln(const struct mod *mod, const char *ln)
-{
-    return socket_sendfln(mod_to_bot(mod)->sess->fd, "%s", ln);
-}
-
-int mod_get_identity(const struct mod *mod, struct mod_identity *ident)
-{
-    const struct irc_session *sess = mod_to_bot(mod)->sess;
-
-    ident->nick = sess->nick;
-    ident->user = sess->user;
-    ident->real = sess->real;
-
-    return 0;
-}
-
-struct list *mod_get_server_capabilities(const struct mod *mod)
-{
-    return mod_to_bot(mod)->sess->capabilities;
-}
-
-struct list *mod_get_channels(const struct mod *mod)
-{
-    return mod_to_bot(mod)->sess->channels;
-}
-
-const struct admin *mod_get_reguser(const struct mod *mod, const char *prefix)
-{
-    return admins_get_by_mask(mod_to_bot(mod), prefix);
 }
 
 int mod_load_autoload(struct bot *bot, const char *file)

@@ -1,6 +1,7 @@
 #ifndef _BOT_H_
 #define _BOT_H_
 
+#include "irc/irc.h"
 #include "util/list.h"
 
 /* Default settings */
@@ -16,5 +17,7 @@ struct bot
     struct list *modules;
     struct list *admins;
 };
+
+int bot_send_message(const struct bot *bot, const struct irc_message *msg);
 
 #endif /* defined _BOT_H_ */

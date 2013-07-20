@@ -66,11 +66,11 @@ int ctcp_handle_ctcp(
 
     if (!strcmp(ctcp, "PING")) {
         irc_mkctcp_response(&response, user.nick, ctcp, "%s", args);
-        send_message(&response);
+        bot_send_message(BOTREF, &response);
 
     } else if (!strcmp(ctcp, "VERSION")) {
         irc_mkctcp_response(&response, user.nick, ctcp, "TinyBot v0xC0FFEE");
-        send_message(&response);
+        bot_send_message(BOTREF, &response);
 
     }
 

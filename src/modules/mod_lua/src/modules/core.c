@@ -6,6 +6,7 @@
 
 #include "module/module.h"
 #include "irc/irc.h"
+#include "irc/session.h"
 #include "irc/util.h"
 #include "util/list.h"
 
@@ -42,13 +43,12 @@ int mod_lua_register_core()
 
 int mod_lua_core_sendmsg(lua_State *L)
 {
-    struct mod *mod = lua_util_check_mod(L);
     struct irc_message msg;
 
     if (lua_util_check_irc_message(L, &msg))
         return luaL_error(L, "incomplete or invalid irc message table");
 
-    mod_sendmsg(mod, &msg);
+    bot_send_message(BOTREF, &msg);
 
     return 0;
 }
@@ -57,28 +57,25 @@ int mod_lua_core_get_identity(lua_State *L)
 {
     const char *kind = lua_tostring(L, 1);
     int itab = (lua_newtable(L), lua_gettop(L));
-    struct mod_identity ident;
-
-    get_identity(&ident);
 
     if (!kind || !strcmp(kind, "*a")) {
-        lua_pushstring(L, ident.nick);
+        lua_pushstring(L, BOTREF->sess->nick);
         lua_setfield(L, itab, "nick");
 
-        lua_pushstring(L, ident.user);
+        lua_pushstring(L, BOTREF->sess->user);
         lua_setfield(L, itab, "user");
 
-        lua_pushstring(L, ident.real);
+        lua_pushstring(L, BOTREF->sess->real);
         lua_setfield(L, itab, "realname");
 
     } else if (!strcmp(kind, "n")) {
-        lua_pushstring(L, ident.nick);
+        lua_pushstring(L, BOTREF->sess->nick);
 
     } else if (!strcmp(kind, "u")) {
-        lua_pushstring(L, ident.user);
+        lua_pushstring(L, BOTREF->sess->user);
 
     } else if (!strcmp(kind, "r")) {
-        lua_pushstring(L, ident.real);
+        lua_pushstring(L, BOTREF->sess->real);
 
     } else {
         lua_pushnil(L);
@@ -89,7 +86,7 @@ int mod_lua_core_get_identity(lua_State *L)
 
 int mod_lua_core_get_channels(lua_State *L)
 {
-    struct list *channels = get_channels();
+    struct list *channels = BOTREF->sess->channels;
     struct list *ptr = NULL;
 
     int clist = (lua_newtable(L), lua_gettop(L));
@@ -109,7 +106,7 @@ int mod_lua_core_get_channel_meta(lua_State *L)
 {
     const char *chan = luaL_checkstring(L, 1);
 
-    struct list *channels = get_channels();
+    struct list *channels = BOTREF->sess->channels;
     struct irc_channel *channel = irc_channel_get(channels, chan);
 
     if (!channel)
@@ -122,7 +119,7 @@ int mod_lua_core_get_channel_modes(lua_State *L)
 {
     const char *chan = luaL_checkstring(L, 1);
 
-    struct list *channels = get_channels();
+    struct list *channels = BOTREF->sess->channels;
     struct irc_channel *channel = irc_channel_get(channels, chan);
 
     if (!channel)
@@ -135,7 +132,7 @@ int mod_lua_core_get_channel_users(lua_State *L)
 {
     const char *chan = luaL_checkstring(L, 1);
 
-    struct list *channels = get_channels();
+    struct list *channels = BOTREF->sess->channels;
     struct irc_channel *channel = irc_channel_get(channels, chan);
 
     if (!channel)
@@ -146,7 +143,7 @@ int mod_lua_core_get_channel_users(lua_State *L)
 
 int mod_lua_core_get_server_caps(lua_State *L)
 {
-    struct list *caps = get_server_capabilities();
+    struct list *caps = BOTREF->sess->capabilities;
 
     return lua_util_push_irc_caps(L, caps);
 }
