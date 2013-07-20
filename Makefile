@@ -1,5 +1,5 @@
 CFLAGS=-Iinclude/ -Wall -g
-LDFLAGS=-ldl -Wl,-export-dynamic -lpcre
+LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c 				\
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
