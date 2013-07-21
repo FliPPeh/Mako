@@ -7,7 +7,9 @@
  * Turns any old number smaller then 32 into a power of two, used for
  * bit field masking
  */
-#define M(x) (1 << ((x) & 31))
+#ifndef M
+#   define M(x) (1 << ((x) & 31))
+#endif
 
 #define FLAGS \
     X(FRIEND,   "friend",   'f') \

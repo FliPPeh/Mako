@@ -47,7 +47,7 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
     LIST_FOREACH(bot->modules, mod) {
         struct mod_loaded *m = list_data(mod, struct mod_loaded *);
 
-        if (m->state->hooks & MASK(ev->type))
+        if (m->state->hooks & M(ev->type))
             m->handler_func(ev);
     }
 

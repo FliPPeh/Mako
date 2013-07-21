@@ -19,7 +19,7 @@ struct mod mod_info = {
     .name = "CTCP",
     .descr = "Provide default CTCP replies",
 
-    .hooks = MASK(EVENT_PRIVATE_CTCP_REQUEST)
+    .hooks = M(EVENT_PRIVATE_CTCP_REQUEST)
 };
 
 int mod_init()

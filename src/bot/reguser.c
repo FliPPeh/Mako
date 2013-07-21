@@ -135,13 +135,13 @@ int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
 {
     switch (c) {
     case CK_ALL:
-        return ((user->flags & t) == t);
+        return ((usr->flags & t) == t);
 
     case CK_ANY:
-        return ((user->flags & t) > 0u);
+        return ((usr->flags & t) > 0u);
 
     case CK_MIN:
-        return user->flags >= t;
+        return usr->flags >= t;
     }
 };
 
@@ -151,12 +151,12 @@ int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
  */
 void reguser_set_flags(struct reguser *usr, uint32_t flags)
 {
-    user->flags |= flags;
+    usr->flags |= flags;
 }
 
 void reguser_unset_flags(struct reguser *usr, uint32_t flags)
 {
-    user->flags &= ~flags;
+    usr->flags &= ~flags;
 }
 
 

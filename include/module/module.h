@@ -7,8 +7,9 @@
 #include "bot/bot.h"
 #include "irc/irc.h"
 
-
-#define MASK(x) (1 << ((x) & 31))
+#ifndef M
+#   define M(x) (1 << ((x) & 31))
+#endif
 
 /*
  * Defines identifiers for events with an internal ID (enum value) and a human
