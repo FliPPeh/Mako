@@ -9,7 +9,7 @@
 #include <ctype.h>
 
 #include "bot/bot.h"
-#include "bot/admins.h"
+#include "bot/reguser.h"
 #include "bot/handlers.h"
 #include "bot/module.h"
 
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
     setup_callbacks(&bot);
 
     log_info("Loading admin list...");
-    admins_load(&bot, "admins.cfg");
+    regusers_load(&bot, "admins.cfg");
 
     if (autoload) {
         log_info("Autoloading modules...");
@@ -144,10 +144,10 @@ int main(int argc, char **argv)
 
     log_debug("Cleaning up...");
 
-    admins_save(&bot, "admins.cfg");
+    regusers_save(&bot, "admins.cfg");
 
     list_free_all(bot.modules, mod_free);
-    list_free_all(bot.admins, free);
+    list_free_all(bot.regusers, free);
 
     log_info("Goodbye!");
     log_destroy();

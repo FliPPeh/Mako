@@ -3,14 +3,14 @@
 #include <string.h>
 
 #include "bot/bot.h"
-#include "bot/admins.h"
+#include "bot/reguser.h"
 
 #include "util/list.h"
 #include "util/log.h"
 #include "util/util.h"
 
 
-void admins_load(struct bot *bot, const char *file)
+void regusers_load(struct bot *bot, const char *file)
 {
     char linebuf[512] = {0};
     FILE *f;
@@ -24,14 +24,14 @@ void admins_load(struct bot *bot, const char *file)
                 char *line = strstrp(linebuf);
                 char *ptr = NULL;
 
-                struct admin tmp;
+                struct reguser tmp;
                 memset(&tmp, 0, sizeof(tmp));
 
                 if ((ptr = strpart(line, ':',
                                 tmp.name, sizeof(tmp.name) - 1,
                                 tmp.mask, sizeof(tmp.mask) - 1))) {
 
-                    admins_add(bot, tmp.name, tmp.mask);
+                    reguser_add(bot, tmp.name, tmp.mask);
                     log_debug("Name: '%s', RegEx: '%s'", tmp.name, tmp.mask);
                 }
             }
@@ -44,15 +44,15 @@ void admins_load(struct bot *bot, const char *file)
     return;
 }
 
-int admins_save(const struct bot *bot, const char *file)
+int regusers_save(const struct bot *bot, const char *file)
 {
     FILE *f;
 
     if ((f = fopen(file, "w"))) {
         struct list *ptr = NULL;
 
-        LIST_FOREACH(bot->admins, ptr) {
-            struct admin *adm = list_data(ptr, struct admin *);
+        LIST_FOREACH(bot->regusers, ptr) {
+            struct reguser *adm = list_data(ptr, struct reguser *);
 
             fprintf(f, "%s:%s\n", adm->name, adm->mask);
         }
@@ -65,29 +65,31 @@ int admins_save(const struct bot *bot, const char *file)
     return 0;
 }
 
-struct admin *admins_get(const struct bot *bot, const char *name)
+struct reguser *reguser_get(const struct bot *bot, const char *name)
 {
-    struct list *res = list_find_custom(bot->admins, name, _admin_find_by_name);
+    struct list *r = list_find_custom(
+            bot->regusers, name, _reguser_find_by_name);
 
-    if (res)
-        return list_data(res, struct admin *);
+    if (r)
+        return list_data(r, struct reguser *);
     else
         return NULL;
 }
 
-struct admin *admins_get_by_mask(const struct bot *bot, const char *pref)
+struct reguser *reguser_get_by_mask(const struct bot *bot, const char *pre)
 {
-    struct list *res = list_find_custom(bot->admins, pref, _admin_find_by_mask);
+    struct list *r = list_find_custom(
+            bot->regusers, pre, _reguser_find_by_mask);
 
-    if (res)
-        return list_data(res, struct admin *);
+    if (r)
+        return list_data(r, struct reguser *);
     else
         return NULL;
 }
 
-int admins_add(struct bot *bot, const char *name, const char *mask)
+int reguser_add(struct bot *bot, const char *name, const char *mask)
 {
-    struct admin *adm = admins_get(bot, name);
+    struct reguser *adm = reguser_get(bot, name);
 
     if (adm)
         return 1;
@@ -98,22 +100,22 @@ int admins_add(struct bot *bot, const char *name, const char *mask)
     strncpy(adm->name, name, sizeof(adm->name) - 1);
     strncpy(adm->mask, mask, sizeof(adm->mask) - 1);
 
-    bot->admins = list_append(bot->admins, adm);
+    bot->regusers = list_append(bot->regusers, adm);
     return 0;
 }
 
-int admins_del(struct bot *bot, struct admin *adm)
+int reguser_del(struct bot *bot, struct reguser *adm)
 {
-    bot->admins = list_remove(bot->admins, adm, free);
+    bot->regusers = list_remove(bot->regusers, adm, free);
     return 0;
 }
 
-int _admin_find_by_name(const void *data, const void *userdata)
+int _reguser_find_by_name(const void *data, const void *userdata)
 {
-    return strcasecmp(((struct admin *)data)->name, (const char *)userdata);
+    return strcasecmp(((struct reguser *)data)->name, (const char *)userdata);
 }
 
-int _admin_find_by_mask(const void *data, const void *userdata)
+int _reguser_find_by_mask(const void *data, const void *userdata)
 {
-    return !regex_match(((struct admin *)data)->mask, (const char *)userdata);
+    return !regex_match(((struct reguser *)data)->mask, (const char *)userdata);
 }

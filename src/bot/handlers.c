@@ -3,7 +3,7 @@
 
 #include "bot/handlers.h"
 #include "bot/bot.h"
-#include "bot/admins.h"
+#include "bot/reguser.h"
 #include "bot/module.h"
 
 #include "module/module.h"
@@ -64,7 +64,7 @@ int bot_handle_command(struct bot *bot,
     struct irc_message response;
     int priv = !irc_is_channel(target);
 
-    if (admins_get_by_mask(bot, prefix)) {
+    if (reguser_get_by_mask(bot, prefix)) {
         irc_split_prefix(&user, prefix);
 
         if (!strcmp(cmd, "load_so")) {

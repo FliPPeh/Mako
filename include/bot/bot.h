@@ -15,7 +15,7 @@ struct bot
 {
     struct irc_session *sess;
     struct list *modules;
-    struct list *admins;
+    struct list *regusers;
 };
 
 int bot_send_message(const struct bot *bot, const struct irc_message *msg);

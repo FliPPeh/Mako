@@ -6,7 +6,6 @@
 #include <dlfcn.h>
 
 #include "bot/bot.h"
-#include "bot/admins.h"
 #include "bot/module.h"
 
 #include "util/list.h"
