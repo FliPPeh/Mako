@@ -1,10 +1,52 @@
 #ifndef _BOT_REGUSER_H_
 #define _BOT_REGUSER_H_
 
+#include <stdint.h>
+
+/*
+ * Turns any old number smaller then 32 into a power of two, used for
+ * bit field masking
+ */
+#define M(x) (1 << ((x) & 31))
+
+#define FLAGS \
+    X(FRIEND,   "friend",   'f') \
+    X(OPERATOR, "operator", 'o') \
+    X(MASTER,   "master",   'm') \
+    X(OWNER,    "owner",    'a')
+
+/*
+ * Generate flag enum
+ */
+#define X(e, str, flag) FLAG_ ## e,
+enum reguser_flag
+{
+    FLAGS FLAGS_MAX
+};
+#undef X
+
+enum reguser_check
+{
+    CK_ALL, /* test *all* flags for a match (and) */
+    CK_ANY, /* test *any* flag for a match (or) */
+    CK_MIN  /* test if user flags are larger or equal to the test
+                value, numerically. Useful only if flags are ordered
+                from lowest to highest privilege. */
+};
+
+extern const char _reguser_flags[];
+extern const char *_reguser_flags_repr[FLAGS_MAX];
+
+/*
+ * Represent a registered user ("reguser") identified by a hostmask, an extended
+ * POSIX regular expression (like egrep).
+ */
 struct reguser
 {
     char name[256];
     char mask[256];
+
+    uint32_t flags;
 };
 
 /*
@@ -16,16 +58,38 @@ int regusers_save(const struct bot *bot, const char *file);
 /*
  * Add and delete regusers
  */
-int reguser_add(struct bot *bot, const char *name, const char *mask);
-int reguser_del(struct bot *bot, struct reguser *adm);
+int reguser_add(struct bot *bot, const char *name, uint32_t fl, const char *m);
+int reguser_del(struct bot *bot, struct reguser *usr);
 
 /*
  * Query regusers
  */
-struct reguser *reguser_get(const struct bot *bot, const char *name);
-struct reguser *reguser_get_by_mask(const struct bot *bot, const char *pre);
 
-int _reguser_find_by_name(const void *data, const void *userdata);
-int _reguser_find_by_mask(const void *data, const void *userdata);
+/* Find by name */
+struct reguser *reguser_get(const struct bot *bot, const char *name);
+
+/* Find by mask */
+struct reguser *reguser_find(const struct bot *bot, const char *pre);
+
+
+/*
+ * Query flags
+ */
+int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c);
+
+/*
+ * Set and unset flags
+ */
+void reguser_set_flags(struct reguser *usr, uint32_t flags);
+void reguser_unset_flags(struct reguser *usr, uint32_t flags);
+
+/*
+ * Internals
+ */
+inline int _reguser_find_by_name(const void *data, const void *userdata);
+inline int _reguser_find_by_mask(const void *data, const void *userdata);
+
+uint32_t _reguser_strtoflg(char src[static 33]);
+void _reguser_flgtostr(uint32_t flags, char dst[static 33]);
 
 #endif /* defined _BOT_REGUSER_H_ */

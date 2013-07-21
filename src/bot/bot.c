@@ -144,9 +144,10 @@ int main(int argc, char **argv)
 
     log_debug("Cleaning up...");
 
+    list_free_all(bot.modules, mod_free);
+
     regusers_save(&bot, "admins.cfg");
 
-    list_free_all(bot.modules, mod_free);
     list_free_all(bot.regusers, free);
 
     log_info("Goodbye!");

@@ -60,23 +60,29 @@ int bot_handle_command(struct bot *bot,
         const char *cmd,
         const char *args)
 {
-    struct irc_prefix_parts user;
-    struct irc_message response;
     int priv = !irc_is_channel(target);
+    struct reguser *usr = NULL;
 
-    if (reguser_get_by_mask(bot, prefix)) {
+    if ((usr = reguser_find(bot, prefix))
+            && reguser_match(usr, M(FLAG_MASTER), CK_MIN)) {
+
+        struct irc_prefix_parts user;
+        struct irc_message response;
+
         irc_split_prefix(&user, prefix);
 
         if (!strcmp(cmd, "load_so")) {
             if (!mod_load(bot, args)) {
                 struct mod_loaded *mod = mod_get(bot, args);
 
-                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
+                irc_mkprivmsg(&response,
+                        irc_proper_target(target, user.nick),
                         "Successfully loaded module '%s' (%s)",
                         mod->path, mod->state->name);
             } else {
-                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                    "Failed loading module './%s.so'", args);
+                irc_mkprivmsg(&response,
+                        irc_proper_target(target, user.nick),
+                        "Failed loading module './%s.so'", args);
             }
 
             sess_sendmsg(bot->sess, &response);
@@ -85,14 +91,17 @@ int bot_handle_command(struct bot *bot,
 
             if (mod) {
                 if (!mod_unload(bot, mod))
-                    irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                        "Successfully unloaded module './%s.so'", args);
+                    irc_mkprivmsg(&response,
+                            irc_proper_target(target, user.nick),
+                            "Successfully unloaded module './%s.so'", args);
                 else
-                    irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                        "Failed unloading module '%s'", args);
+                    irc_mkprivmsg(&response,
+                            irc_proper_target(target, user.nick),
+                            "Failed unloading module '%s'", args);
             } else {
-                irc_mkprivmsg(&response, irc_proper_target(target, user.nick),
-                    "No such module './%s.so'", args);
+                irc_mkprivmsg(&response,
+                        irc_proper_target(target, user.nick),
+                        "No such module './%s.so'", args);
             }
 
             sess_sendmsg(bot->sess, &response);

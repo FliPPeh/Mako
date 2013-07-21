@@ -4,7 +4,7 @@ SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
 		util/list.c util/log.c util/util.c
-CC=clang -Wextra #-std=gnu11
+CC=clang -Wextra -Wno-unused-parameter #-std=gnu11
 
 
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))

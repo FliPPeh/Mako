@@ -9,6 +9,17 @@
 #include "util/log.h"
 #include "util/util.h"
 
+/*
+ * Generate a few arrays
+ */
+#define X(e, str, flag) flag,
+const char _reguser_flags[] = { FLAGS '\0' };
+#undef X
+
+#define X(e, str, flag) str,
+const char *_reguser_flags_repr[FLAGS_MAX] = { FLAGS };
+#undef X
+
 
 void regusers_load(struct bot *bot, const char *file)
 {
@@ -20,19 +31,23 @@ void regusers_load(struct bot *bot, const char *file)
         return;
     } else {
         while (fgets(linebuf, sizeof(linebuf), f)) {
-            if (strlen(linebuf) > 0) {
-                char *line = strstrp(linebuf);
-                char *ptr = NULL;
+            if (!strlen(linebuf))
+                continue;
 
-                struct reguser tmp;
-                memset(&tmp, 0, sizeof(tmp));
+            char *line = strstrp(linebuf);
+            char *p = NULL;
 
-                if ((ptr = strpart(line, ':',
-                                tmp.name, sizeof(tmp.name) - 1,
-                                tmp.mask, sizeof(tmp.mask) - 1))) {
+            char a[256] = {0}; /* name */
+            char b[33] = {0};  /* flags */
+            char c[256] = {0}; /* mask */
+            char r[512] = {0}; /* rest */
 
-                    reguser_add(bot, tmp.name, tmp.mask);
-                    log_debug("Name: '%s', RegEx: '%s'", tmp.name, tmp.mask);
+            if ((p = strpart(line, ':', a, sizeof(a) - 1, r, sizeof(r) - 1))) {
+                if (strpart(p, ':',  b, sizeof(b) - 1, c, sizeof(c) - 1)) {
+
+                    reguser_add(bot, a, _reguser_strtoflg(b), c);
+                    log_debug("Name: '%s', RegEx: '%s', Flags: %d",
+                            a, c, _reguser_strtoflg(b));
                 }
             }
 
@@ -52,9 +67,11 @@ int regusers_save(const struct bot *bot, const char *file)
         struct list *ptr = NULL;
 
         LIST_FOREACH(bot->regusers, ptr) {
-            struct reguser *adm = list_data(ptr, struct reguser *);
+            char flgstr[33] = {0};
+            struct reguser *usr = list_data(ptr, struct reguser *);
 
-            fprintf(f, "%s:%s\n", adm->name, adm->mask);
+            _reguser_flgtostr(usr->flags, flgstr);
+            fprintf(f, "%s:%s:%s\n", usr->name, flgstr, usr->mask);
         }
     } else {
         log_perror("fopen()", LOG_ERROR);
@@ -76,7 +93,7 @@ struct reguser *reguser_get(const struct bot *bot, const char *name)
         return NULL;
 }
 
-struct reguser *reguser_get_by_mask(const struct bot *bot, const char *pre)
+struct reguser *reguser_find(const struct bot *bot, const char *pre)
 {
     struct list *r = list_find_custom(
             bot->regusers, pre, _reguser_find_by_mask);
@@ -87,29 +104,65 @@ struct reguser *reguser_get_by_mask(const struct bot *bot, const char *pre)
         return NULL;
 }
 
-int reguser_add(struct bot *bot, const char *name, const char *mask)
+int reguser_add(struct bot *bot, const char *name, uint32_t fl, const char *m)
 {
-    struct reguser *adm = reguser_get(bot, name);
+    struct reguser *usr = reguser_get(bot, name);
 
-    if (adm)
+    if (usr)
         return 1;
 
-    adm = malloc(sizeof(*adm));
-    memset(adm, 0, sizeof(*adm));
+    usr = malloc(sizeof(*usr));
+    memset(usr, 0, sizeof(*usr));
 
-    strncpy(adm->name, name, sizeof(adm->name) - 1);
-    strncpy(adm->mask, mask, sizeof(adm->mask) - 1);
+    strncpy(usr->name, name, sizeof(usr->name) - 1);
+    usr->flags = fl;
+    strncpy(usr->mask, m, sizeof(usr->mask) - 1);
 
-    bot->regusers = list_append(bot->regusers, adm);
+    bot->regusers = list_append(bot->regusers, usr);
     return 0;
 }
 
-int reguser_del(struct bot *bot, struct reguser *adm)
+int reguser_del(struct bot *bot, struct reguser *usr)
 {
-    bot->regusers = list_remove(bot->regusers, adm, free);
+    bot->regusers = list_remove(bot->regusers, usr, free);
     return 0;
 }
 
+/*
+ * Query flags
+ */
+int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
+{
+    switch (c) {
+    case CK_ALL:
+        return ((user->flags & t) == t);
+
+    case CK_ANY:
+        return ((user->flags & t) > 0u);
+
+    case CK_MIN:
+        return user->flags >= t;
+    }
+};
+
+
+/*
+ * Set and unset flags
+ */
+void reguser_set_flags(struct reguser *usr, uint32_t flags)
+{
+    user->flags |= flags;
+}
+
+void reguser_unset_flags(struct reguser *usr, uint32_t flags)
+{
+    user->flags &= ~flags;
+}
+
+
+/*
+ * Internals
+ */
 int _reguser_find_by_name(const void *data, const void *userdata)
 {
     return strcasecmp(((struct reguser *)data)->name, (const char *)userdata);
@@ -118,4 +171,26 @@ int _reguser_find_by_name(const void *data, const void *userdata)
 int _reguser_find_by_mask(const void *data, const void *userdata)
 {
     return !regex_match(((struct reguser *)data)->mask, (const char *)userdata);
+}
+
+uint32_t _reguser_strtoflg(char src[static 33])
+{
+    uint32_t res = 0;
+
+    for (int i = FLAGS_MAX - 1; i >= 0; --i)
+        if (strchr(src, _reguser_flags[i]))
+            res |= M(i);
+
+    return res;
+}
+
+void _reguser_flgtostr(uint32_t flags, char dst[static 33])
+{
+    size_t stroff = 0;
+
+    memset(dst, 0, 33 * sizeof(char));
+
+    for (int i = FLAGS_MAX - 1; i >= 0; --i)
+        if (flags & M(i))
+            dst[stroff++] = _reguser_flags[i];
 }
