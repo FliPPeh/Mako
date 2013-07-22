@@ -178,7 +178,7 @@ int _reguser_find_by_mask(const void *data, const void *userdata)
     return !regex_match(((struct reguser *)data)->mask, (const char *)userdata);
 }
 
-uint32_t _reguser_strtoflg(char src[static 33])
+uint32_t _reguser_strtoflg(const char *src)
 {
     uint32_t res = 0;
 

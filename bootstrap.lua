@@ -84,6 +84,85 @@ function log.log(...)
 end
 
 ----
+-- Reguser library
+----
+bot.reguser = {}
+bot.reguser_meta = { __index = bot.reguser }
+
+function bot.reguser.new(name)
+    for k, v in pairs(reguser.get_all()) do
+        if k:lower() == name:lower() then
+            return setmetatable({
+                name = k
+            }, bot.reguser_meta)
+        end
+    end
+
+    error(string.format('no such reguser %q', name), 2)
+end
+
+function bot.reguser.create(name, flags, mask)
+    if reguser.add(name, flags, mask) then
+        return bot.reguser.new(name)
+    end
+
+    error(string.format('error adding new reguser %q', name), 2)
+end
+
+function bot.reguser.find(prefix)
+    local n = reguser.find(prefix)
+
+    if n then
+        return bot.reguser.new(n)
+    end
+end
+
+function bot.reguser:flags()
+    return reguser.get_all()[self.name].flags
+end
+
+function bot.reguser:rawflags()
+    return reguser.get_all()[self.name].rawflags
+end
+
+function bot.reguser:match(flags, matchtype)
+    local matchtype = matchtype or 'any'
+
+    if matchtype == 'any' then
+        for i = 1, #flags do
+            if self:flags():find(flags:sub(i, i)) then
+                return true
+            end
+        end
+
+        return false
+    elseif matchtype == 'all' then
+        for i = 1, #flags do
+            if not self:flags():find(flags:sub(i, i)) then
+                return false
+            end
+        end
+
+        return true
+    end
+end
+
+function bot.reguser:set_flags(f)
+    reguser.set_flags(self.name, f)
+end
+
+function bot.reguser:unset_flags(f)
+    reguser.unset_flags(self.name, f)
+end
+
+-- Of course, all further methods on this object will fail, should reguser.del()
+-- not error out.
+function bot.reguser:unregister()
+    reguser.del(self.name)
+end
+
+
+----
 -- Utils
 ----
 function try(fn, default)

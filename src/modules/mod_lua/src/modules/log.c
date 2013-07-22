@@ -17,10 +17,26 @@ int mod_lua_register_log()
         { NULL, NULL }
     };
 
+    int logtab;
+    int i = 1;
+
     lua_State *L = mod_lua_state.L;
 
     /* Stack: api table */
     luaL_newlib(L, log_functions);
+
+    /* Stack: log fn table */
+    logtab = (lua_newtable(L), lua_gettop(L));
+
+#define X(lvl, name, fun, prefmt, postfmt) \
+    lua_pushstring(L, name);               \
+    lua_rawseti(L, logtab, i++);           \
+
+    LOGLEVELS
+#undef X
+    ;
+
+    lua_setfield(L, -2, "levels");
 
     /* Stack: log fn table, api table */
     lua_setglobal(L, "log");

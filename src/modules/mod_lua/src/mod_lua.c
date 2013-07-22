@@ -11,8 +11,9 @@
 #include "mod_lua.h"
 #include "lua_util.h"
 
-#include "modules/log.h"
 #include "modules/core.h"
+#include "modules/log.h"
+#include "modules/reguser.h"
 
 
 struct mod_lua_state mod_lua_state;
@@ -48,6 +49,7 @@ int mod_init()
 
     mod_lua_register_core();
     mod_lua_register_log();
+    mod_lua_register_reguser();
 
     if (luaL_dofile(L, "bootstrap.lua")) {
         log_error_n("mod_lua", "Unable to open Lua bootstrapper: %s",

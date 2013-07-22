@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "bot/bot.h"
+
 /*
  * Turns any old number smaller then 32 into a power of two, used for
  * bit field masking
@@ -100,7 +102,7 @@ void reguser_unset_flags(struct reguser *usr, uint32_t flags);
 inline int _reguser_find_by_name(const void *data, const void *userdata);
 inline int _reguser_find_by_mask(const void *data, const void *userdata);
 
-uint32_t _reguser_strtoflg(char src[static 33]);
+uint32_t _reguser_strtoflg(const char *src);
 void _reguser_flgtostr(uint32_t flags, char dst[static 33]);
 
 #endif /* defined _BOT_REGUSER_H_ */
