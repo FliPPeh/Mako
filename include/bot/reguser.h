@@ -49,6 +49,13 @@ struct reguser
     char mask[256];
 
     uint32_t flags;
+
+    /*
+     * Used for the return value of reguser_flagstr(). Saves the caller from
+     * allocating their own buffer at the cost of 33 bytes per reguser, which
+     * isn't that big of an impact.
+     */
+    char _flagstr[33];
 };
 
 /*
@@ -78,6 +85,8 @@ struct reguser *reguser_find(const struct bot *bot, const char *pre);
  * Query flags
  */
 int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c);
+
+const char *reguser_flagstr(const struct reguser *usr);
 
 /*
  * Set and unset flags

@@ -145,6 +145,11 @@ int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
     }
 };
 
+const char *reguser_flagstr(const struct reguser *usr)
+{
+    _reguser_flgtostr(usr->flags, ((struct reguser *)usr)->_flagstr);
+    return usr->_flagstr;
+}
 
 /*
  * Set and unset flags
