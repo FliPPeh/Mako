@@ -13,7 +13,7 @@
 #include "util/log.h"
 #include "util/list.h"
 
-#include "module/module.h"
+#include "modules/module.h"
 
 
 int mod_lua_dispatch(enum mod_event_type type, const char *argtypes, ...)

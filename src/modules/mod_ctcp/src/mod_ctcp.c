@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "module/module.h"
+#include "modules/module.h"
 #include "irc/irc.h"
 #include "irc/util.h"
 

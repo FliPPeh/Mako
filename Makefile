@@ -1,4 +1,4 @@
-CFLAGS=-Iinclude/ -Wall -g
+CFLAGS=-Isrc/ -Wall -g
 LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
@@ -23,7 +23,7 @@ $(OBJECTS):
 modules: $(MODULES)
 
 $(MODULES): $(addsuffix .so, $@)
-	make -C "$(MODSRCPATH)/$@" INC=$(PWD)/include/ SRC=$(PWD)/src/
+	make -C "$(MODSRCPATH)/$@" INC=$(PWD)/src/ SRC=$(PWD)/src/
 	ln -sf "$(MODSRCPATH)/$@/$@.so" .
 	echo
 

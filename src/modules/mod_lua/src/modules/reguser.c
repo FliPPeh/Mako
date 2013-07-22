@@ -6,7 +6,6 @@
 
 #include "bot/reguser.h"
 
-#include "module/module.h"
 #include "irc/irc.h"
 #include "irc/util.h"
 #include "util/list.h"

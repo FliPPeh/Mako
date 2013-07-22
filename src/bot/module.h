@@ -2,7 +2,7 @@
 #define _BOT_MODULE_H
 
 #include "bot/bot.h"
-#include "module/module.h"
+#include "modules/module.h"
 
 #define MOD_NAME_MAX 256
 #define MOD_PATH_MAX 256

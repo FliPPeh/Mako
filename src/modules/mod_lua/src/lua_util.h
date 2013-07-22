@@ -5,7 +5,7 @@
 
 #include "irc/irc.h"
 
-#include "module/module.h"
+#include "modules/module.h"
 
 
 int mod_lua_dispatch(enum mod_event_type type, const char *argtypes, ...);
@@ -28,7 +28,5 @@ struct log_context *lua_util_check_logger(lua_State *L, int n);
 int lua_util_check_log_level(lua_State *L, int n);
 
 int lua_util_check_irc_message(lua_State *L, struct irc_message *msg);
-
-struct mod *lua_util_check_mod(lua_State *L);
 
 #endif /* defined _MOD_LUA_UTIL_H_ */

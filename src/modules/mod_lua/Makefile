@@ -1,4 +1,4 @@
-CFLAGS=-I$(INC) -Iinclude/ -Wall -g -fpic
+CFLAGS=-I$(INC) -Isrc/ -Wall -g -fpic
 LDFLAGS=-shared -llua -lm
 CC=clang -Wextra -std=gnu11
 

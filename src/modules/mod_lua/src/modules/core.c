@@ -4,7 +4,6 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include "module/module.h"
 #include "irc/irc.h"
 #include "irc/session.h"
 #include "irc/util.h"

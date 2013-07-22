@@ -4,7 +4,7 @@
 #include "bot/bot.h"
 #include "irc/irc.h"
 
-#include "module/module.h"
+#include "modules/module.h"
 
 
 int bot_split_ctcp(const char *source,

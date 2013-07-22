@@ -6,7 +6,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include "module/module.h"
+#include "modules/module.h"
 
 #include "mod_lua.h"
 #include "lua_util.h"
