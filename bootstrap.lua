@@ -155,6 +155,41 @@ function bot.reguser:unset_flags(f)
     reguser.unset_flags(self.name, f)
 end
 
+function bot.reguser:apply_flags(flags)
+    local set = {}
+    local unset = {}
+
+    local t = nil
+
+    if flags:sub(1, 1) ~= '+' and flags:sub(1, 1) ~= '-' then
+        error('flags must start with "+" or "-"', 2)
+    end
+
+    for i = 1, #flags do
+        local f = flags:sub(i, i)
+
+        if f == '+' then
+            t = set
+        elseif f == '-' then
+            t = unset
+        else
+            if reguser.flags[f] then
+                table.insert(t, f)
+            else
+                error(string.format('unknown flag %q', f), 2)
+            end
+        end
+    end
+
+    if #set > 0 then
+        self:set_flags(table.concat(set, ''))
+    end
+
+    if #unset > 0 then
+        self:unset_flags(table.concat(unset, ''))
+    end
+end
+
 -- Of course, all further methods on this object will fail, should reguser.del()
 -- not error out.
 function bot.reguser:unregister()
