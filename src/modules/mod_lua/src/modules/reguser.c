@@ -16,6 +16,21 @@
 
 #include "modules/reguser.h"
 
+/*
+ * Rationale for using strings instead of bitfields:
+ *
+ * Even though the reguser system is built upon bit manipulation and testing and
+ * Lua 5.2 comes with the bit32 module, idiomatic Lua uses strings for many
+ * operations. It also makes more sense in a higher level language to work
+ * on higher leveled interfaces.
+ *
+ * Since everything is string based in Lua, there is no need to export the
+ * reguser matching functions. Instead, Lua's string.find is used to test for
+ * flags.
+ *
+ * set_flags and unset_flags receive the flagstring from Lua and convert it to
+ * the bitstring, much like it does when reading the entries from a file.
+ */
 
 int mod_lua_register_reguser()
 {
@@ -127,7 +142,7 @@ int mod_lua_reguser_setflags(lua_State *L)
     const char *flags = luaL_checkstring(L, 2);
     const char *ptr = NULL;
 
-    for (ptr = flags; ptr; ++ptr)
+    for (ptr = flags; *ptr; ++ptr)
         if (!strchr(_reguser_flags, *ptr))
             return luaL_error(L, "no such flag '%c'", *ptr);
 
@@ -152,7 +167,7 @@ int mod_lua_reguser_unsetflags(lua_State *L)
 
     struct reguser *usr = NULL;
 
-    for (ptr = flags; ptr; ++ptr)
+    for (ptr = flags; *ptr; ++ptr)
         if (!strchr(_reguser_flags, *ptr))
             return luaL_error(L, "no such flag '%c'", *ptr);
 
