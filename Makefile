@@ -1,10 +1,10 @@
-CFLAGS=-Isrc/ -Wall -g
+CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -std=gnu11
 LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
 		util/list.c util/log.c util/util.c
-CC=clang -Wextra -Wno-unused-parameter #-std=gnu11
+CC=clang
 
 
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
