@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <strings.h>
+
 #include "bot/bot.h"
 #include "bot/reguser.h"
 
@@ -70,7 +72,7 @@ int regusers_save(const struct bot *bot, const char *file)
             char flgstr[33] = {0};
             struct reguser *usr = list_data(ptr, struct reguser *);
 
-            _reguser_flgtostr(usr->flags, flgstr);
+            _reguser_flgtostr(usr->flags, flgstr, sizeof(flgstr));
             fprintf(f, "%s:%s:%s\n", usr->name, flgstr, usr->mask);
         }
     } else {
@@ -147,7 +149,9 @@ int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
 
 const char *reguser_flagstr(const struct reguser *usr)
 {
-    _reguser_flgtostr(usr->flags, ((struct reguser *)usr)->_flagstr);
+    _reguser_flgtostr(usr->flags,
+            ((struct reguser *)usr)->_flagstr, sizeof(usr->_flagstr));
+
     return usr->_flagstr;
 }
 
@@ -189,13 +193,13 @@ uint32_t _reguser_strtoflg(const char *src)
     return res;
 }
 
-void _reguser_flgtostr(uint32_t flags, char dst[static 33])
+void _reguser_flgtostr(uint32_t flags, char *dst, size_t dsts)
 {
     size_t stroff = 0;
 
-    memset(dst, 0, 33 * sizeof(char));
+    memset(dst, 0, dsts);
 
-    for (int i = FLAGS_MAX - 1; i >= 0; --i)
+    for (int i = FLAGS_MAX - 1; (stroff < dsts) && (i >= 0); --i)
         if (flags & M(i))
             dst[stroff++] = _reguser_flags[i];
 }

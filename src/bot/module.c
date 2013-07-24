@@ -46,14 +46,14 @@ int mod_load(struct bot *bot, const char *name)
         goto exit_err_noalloc;
     }
 
-    mod = malloc(sizeof(struct mod_loaded));
+    mod = (struct mod_loaded *)malloc(sizeof(struct mod_loaded));
     memset(mod, 0, sizeof(*mod));
 
     mod->dlhandle = lib_handle;
     strncpy(mod->name, name, sizeof(mod->name) - 1);
     strncpy(mod->path, path, sizeof(mod->path) - 1);
 
-    if (!(modstate = mod_get_symbol(mod, "info"))) {
+    if (!(modstate = (struct mod *)mod_get_symbol(mod, "info"))) {
         log_error("Couldn't locate module root struct");
 
         goto exit_err;
@@ -65,7 +65,10 @@ int mod_load(struct bot *bot, const char *name)
         mod->state = modstate;
     }
 
-    if (!(modhandler = mod_get_symbol(mod, "handle_event"))) {
+    modhandler =
+        (int (*)(struct mod_event *))mod_get_symbol(mod, "handle_event");
+
+    if (!modhandler) {
         log_error("Couldn't locate module event handlers");
 
         goto exit_err;
@@ -73,7 +76,7 @@ int mod_load(struct bot *bot, const char *name)
         mod->handler_func = modhandler;
     }
 
-    if ((init = mod_get_symbol(mod, "init"))) {
+    if ((init = (int (*)())mod_get_symbol(mod, "init"))) {
         if (init()) {
             log_info("Module '%s' has aborted initialization", name);
 
@@ -101,9 +104,9 @@ int mod_unload(struct bot *bot, struct mod_loaded *mod)
 void mod_free(void *arg)
 {
     int (*exit)();
-    struct mod_loaded *mod = arg;
+    struct mod_loaded *mod = (struct mod_loaded *)arg;
 
-    if ((exit = mod_get_symbol(mod, "exit"))) {
+    if ((exit = (int (*)())mod_get_symbol(mod, "exit"))) {
         exit();
     }
 
@@ -119,7 +122,7 @@ struct mod_loaded *mod_get(const struct bot *bot, const char *name)
 
     LIST_FOREACH(bot->modules, ptr)
         if (!strcmp(list_data(ptr, struct mod_loaded *)->name, name))
-            return ptr->data;
+            return list_data(ptr, struct mod_loaded *);
 
     return NULL;
 }

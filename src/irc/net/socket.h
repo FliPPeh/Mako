@@ -1,6 +1,8 @@
 #ifndef _SOCKET_H_
 #define _SOCKET_H_
 
+#define __USE_POSIX
+
 #include <sys/types.h>
 #include <sys/socket.h>
 

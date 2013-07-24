@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <sys/select.h>
+
 #include "irc/irc.h"
 #include "irc/util.h"
 #include "irc/session.h"

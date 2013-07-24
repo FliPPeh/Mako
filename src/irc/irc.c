@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include <strings.h>
+
 #include "irc/irc.h"
 #include "util/util.h"
 #include "util/list.h"

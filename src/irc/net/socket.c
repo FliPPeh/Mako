@@ -5,6 +5,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define __USE_POSIX
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

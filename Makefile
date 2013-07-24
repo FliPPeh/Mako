@@ -1,4 +1,4 @@
-CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -std=gnu11
+CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -std=c11
 LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
