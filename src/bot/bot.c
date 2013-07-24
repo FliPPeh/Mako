@@ -142,13 +142,12 @@ int main(int argc, char **argv)
 
     sess_main(&sess);
 
-    log_debug("Cleaning up...");
-
-    list_free_all(bot.modules, mod_free);
-
+    log_debug("Saving state and cleaning up...");
     regusers_save(&bot, "admins.cfg");
 
+    list_free_all(bot.modules, mod_free);
     list_free_all(bot.regusers, free);
+
 
     log_info("Goodbye!");
     log_destroy();

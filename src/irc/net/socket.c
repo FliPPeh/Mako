@@ -43,7 +43,6 @@ int socket_connect(const char *host, const char *svc)
 {
     struct addrinfo hints;
     struct addrinfo *resolv = NULL;
-    struct addrinfo *p = NULL;
 
     int fd = -1;
     int gai_err = -1;
@@ -61,7 +60,7 @@ int socket_connect(const char *host, const char *svc)
         goto exit;
     }
 
-    for (p = resolv; p != NULL; p = p->ai_next) {
+    for (struct addrinfo *p = resolv; p != NULL; p = p->ai_next) {
         const char *addrstr = socket_addrstr(p->ai_family, p->ai_addr);
         const char *addrcanon = socket_addrcanon(p->ai_addr, p->ai_addrlen);
 

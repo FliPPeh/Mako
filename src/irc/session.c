@@ -42,7 +42,6 @@ int sess_getln(struct irc_session *sess, char *linebuf, size_t linebufsiz)
 
 int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg)
 {
-    int i;
     char buffer[IRC_MESSAGE_MAX] = {0};
     struct irc_message msgcopy = *msg;
 
@@ -52,7 +51,7 @@ int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg)
 
     strncat(buffer, msgcopy.command, sizeof(buffer) - 1);
 
-    for (i = 0; i < msgcopy.paramcount; ++i) {
+    for (int i = 0; i < msgcopy.paramcount; ++i) {
         strncat(buffer, " ", sizeof(buffer) - 1);
         strncat(buffer, msgcopy.params[i], sizeof(buffer) - 1);
     }
@@ -223,11 +222,10 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
     } else if (!strcmp(msg->command, "005")) {
         /* ISUPPORT */
-        int i;
         char capability[IRC_PARAM_MAX];
         char *eq = NULL;
 
-        for (i = 1; i < msg->paramcount; ++i) {
+        for (int i = 1; i < msg->paramcount; ++i) {
             memcpy(capability, msg->params[i], sizeof(capability));
 
             if (!(eq = strchr(msg->params[i], '='))) {
@@ -306,8 +304,6 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
     } else if (!strcmp(msg->command, "352")) {
         /* REPL_WHO */
-        size_t j;
-        size_t i;
         char prefix[IRC_PREFIX_MAX] = {0};
 
         /* TODO: Error check */
@@ -352,8 +348,8 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
          * Go over every flag within the users mode string and match
          * them against the server's PREFIX to get the actual mode.
          */
-        for (i = 0; i < strlen(msg->params[6]); ++i)
-            for (j = 0; j < prfsep - 1; ++j)
+        for (size_t i = 0; i < strlen(msg->params[6]); ++i)
+            for (size_t j = 0; j < prfsep - 1; ++j)
                 if (msg->params[6][i] == prf[prfsep + j + 1])
                     irc_channel_user_set_mode(user, prf[j + 1]);
 

@@ -44,7 +44,6 @@ int mod_lua_register_reguser()
     };
 
     int flagtab;
-    int i;
 
     lua_State *L = mod_lua_state.L;
 
@@ -57,7 +56,7 @@ int mod_lua_register_reguser()
     /*
      * Push table mapping flag names to their underlying values
      */
-    for (i = 0; i < FLAGS_MAX; ++i) {
+    for (int i = 0; i < FLAGS_MAX; ++i) {
         //lua_pushinteger(L, M(i));
         lua_pushstring(L, _reguser_flags_repr[i]);
         lua_setfield(L, flagtab, (char[2]) { _reguser_flags[i], '\0' });
@@ -139,9 +138,8 @@ int mod_lua_reguser_setflags(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
     const char *flags = luaL_checkstring(L, 2);
-    const char *ptr = NULL;
 
-    for (ptr = flags; *ptr; ++ptr)
+    for (const char *ptr = flags; *ptr; ++ptr)
         if (!strchr(_reguser_flags, *ptr))
             return luaL_error(L, "no such flag '%c'", *ptr);
 
@@ -164,9 +162,7 @@ int mod_lua_reguser_unsetflags(lua_State *L)
     const char *flags = luaL_checkstring(L, 2);
     const char *ptr = NULL;
 
-    struct reguser *usr = NULL;
-
-    for (ptr = flags; *ptr; ++ptr)
+    for (struct reguser *ptr = flags; *ptr; ++ptr)
         if (!strchr(_reguser_flags, *ptr))
             return luaL_error(L, "no such flag '%c'", *ptr);
 

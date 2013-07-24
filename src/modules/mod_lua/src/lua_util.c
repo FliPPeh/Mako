@@ -94,7 +94,6 @@ int lua_util_push_irc_message(lua_State *L, const struct irc_message *msg)
 {
     int tab = (lua_newtable(L), lua_gettop(L));
     int argtab;
-    int i;
 
     lua_pushstring(L, msg->prefix);
     lua_setfield(L, tab, "prefix");
@@ -106,7 +105,7 @@ int lua_util_push_irc_message(lua_State *L, const struct irc_message *msg)
     lua_setfield(L, tab, "message");
 
     argtab = (lua_newtable(L), lua_gettop(L));
-    for (i = 0; i < msg->paramcount; ++i) {
+    for (int i = 0; i < msg->paramcount; ++i) {
         lua_pushstring(L, msg->params[i]);
         lua_rawseti(L, argtab, i + 1);
     }
@@ -260,12 +259,11 @@ int lua_util_check_irc_message(lua_State *L, struct irc_message *msg)
 
     if (!lua_isnil(L, -1)) {
         int n = lua_rawlen(L, -1);
-        int i;
 
         if (n > IRC_PARAM_COUNT_MAX)
             return 1;
 
-        for (i = 1; i <= n; ++i) {
+        for (int i = 1; i <= n; ++i) {
             lua_rawgeti(L, -1, i);
 
             if (!lua_isnil(L, -1)) {

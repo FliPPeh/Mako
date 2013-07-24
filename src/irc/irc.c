@@ -72,14 +72,12 @@ int irc_parse_message(const char *line, struct irc_message *msg)
 
 void irc_print_message(const struct irc_message *i)
 {
-    int j;
-
     if (strlen(i->prefix))
         printf(":%s ", i->prefix);
 
     printf("%s", i->command);
 
-    for (j = 0; j < i->paramcount; j++)
+    for (int j = 0; j < i->paramcount; j++)
         printf(" %s", i->params[j]);
 
     if (strlen(i->msg))
