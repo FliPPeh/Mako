@@ -144,6 +144,8 @@ int reguser_match(const struct reguser *usr, uint32_t t, enum reguser_check c)
     case CK_MIN:
         return usr->flags >= t;
     }
+
+    return 0;
 };
 
 const char *reguser_flagstr(const struct reguser *usr)
