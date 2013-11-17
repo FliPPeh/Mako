@@ -41,6 +41,10 @@
     X(PRIVATE_CTCP_RESPONSE, "private_ctcp_response")               \
     X(PRIVATE_ACTION,        "private_action")                      \
     X(PRIVATE_COMMAND,       "private_command")                     \
+                                                                    \
+    /*                                                              \
+     * Generic events                                               \
+     */                                                             \
     X(JOIN,                  "join")                                \
     X(PART,                  "part")                                \
     X(QUIT,                  "quit")                                \
@@ -182,7 +186,9 @@ struct mod_event
 
 /*
  * Top level compound structure combining everything needed to identify a module
- * and provide a backref to the host code.
+ * and provide a backref to the host code. Every mod *must* have one global
+ * variable of this type, called "mod_info", so that the module loader can
+ * set it up properly.
  */
 struct mod
 {
@@ -194,7 +200,7 @@ struct mod
      *
      * If left 0, module will not be called for any event.
      *
-     * "MASK(EVENT_JOIN) | MASK(EVENT_PART)" means module will be
+     * "M(EVENT_JOIN) | M(EVENT_PART)" means module will be
      * called for joins and parts only.
      *
      * ~0 or -1 means module will be called for any event.
