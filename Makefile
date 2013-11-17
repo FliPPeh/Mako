@@ -1,14 +1,14 @@
-CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -std=c11
+CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -Wunused -std=c11 -O
 LDFLAGS=-ldl -Wl,-export-dynamic
-SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c \
+SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c bot/helpers.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
-		util/list.c util/log.c util/util.c
+		util/list.c util/log.c util/util.c util/hashtable.c
 CC=clang
 
 
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
-MODULES=mod_ctcp mod_lua
+MODULES=mod_base mod_lua
 MODULE_LIBS=$(addsuffix .so, $(MODULES))
 
 # Subdirectory within src/modules/ where each mod resides

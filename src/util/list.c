@@ -1,8 +1,13 @@
+#include "list.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "util/list.h"
+void list_free_wrapper(void *data, void *ud)
+{
+    free(data);
+}
 
 struct list *list_new()
 {
@@ -21,10 +26,10 @@ struct list *list_new_with_data(void *data)
     return list;
 }
 
-void list_free(struct list *link, list_delete_func fn)
+void list_free(struct list *link, list_delete_func fn, void *ud)
 {
     if (fn)
-        fn(link->data);
+        fn(link->data, ud);
 
     free(link);
 }
@@ -59,16 +64,19 @@ struct list *list_insert(struct list *list, void *data, int position)
     }
 }
 
-struct list *list_insert_before(
-        struct list *list, struct list *pos, void *data)
+struct list *list_insert_before(struct list *list,
+                                struct list *pos,
+                                void *data)
 {
     struct list *newitem = list_new_with_data(data);
 
     return _list_link_before(list, pos, newitem);
 }
 
-struct list *list_insert_sorted(
-        struct list *list, void *data, list_compare_func fn)
+struct list *list_insert_sorted(struct list *list,
+                                void *data,
+                                list_compare_func fn,
+                                void *userdata)
 {
     if (!list) {
         list = list_new_with_data(data);
@@ -78,7 +86,7 @@ struct list *list_insert_sorted(
         newitem->data = data;
 
         for (struct list *ptr = list; ptr != NULL; ptr = ptr->next) {
-            if (fn(ptr->data, data) < 0)
+            if (fn(ptr->data, data, userdata) < 0)
                 return _list_link_before(list, ptr, newitem);
 
             if (ptr->next == NULL)
@@ -89,14 +97,16 @@ struct list *list_insert_sorted(
     return list;
 }
 
-struct list *list_remove(
-        struct list *list, const void *data, list_delete_func fn)
+struct list *list_remove(struct list *list,
+                         const void *data,
+                         list_delete_func fn,
+                         void *ud)
 {
     for (struct list *ptr = list; ptr != NULL; ptr = ptr->next) {
         if (ptr->data == data) {
             struct list *newlist = _list_unlink(list, ptr);
 
-            list_free(ptr, fn);
+            list_free(ptr, fn, ud);
 
             return newlist;
         }
@@ -105,8 +115,10 @@ struct list *list_remove(
     return list;
 }
 
-struct list *list_remove_all(
-        struct list *list, const void *data, list_delete_func fn)
+struct list *list_remove_all(struct list *list,
+                             const void *data,
+                             list_delete_func fn,
+                             void *ud)
 {
     struct list *ptr = list;
 
@@ -115,7 +127,7 @@ struct list *list_remove_all(
             struct list *next = ptr->next;
 
             list = _list_unlink(list, ptr);
-            list_free(ptr, fn);
+            list_free(ptr, fn, ud);
 
             ptr = next;
 
@@ -128,14 +140,16 @@ struct list *list_remove_all(
     return list;
 }
 
-struct list *list_remove_link(
-        struct list *list, struct list *link, list_delete_func fn)
+struct list *list_remove_link(struct list *list,
+                              struct list *link,
+                              list_delete_func fn,
+                              void *ud)
 {
     for (struct list *ptr = list; ptr != NULL; ptr = ptr->next) {
         if (ptr == link) {
             struct list *newlist = _list_unlink(list, ptr);
 
-            list_free(ptr, fn);
+            list_free(ptr, fn, ud);
 
             return newlist;
         }
@@ -144,14 +158,14 @@ struct list *list_remove_link(
     return list;
 }
 
-void list_free_all(struct list *list, list_delete_func fn)
+void list_free_all(struct list *list, list_delete_func fn, void *ud)
 {
     struct list *ptr = list;
 
     while (ptr != NULL) {
         struct list *next = ptr->next;
 
-        list_free(ptr, fn);
+        list_free(ptr, fn, ud);
 
         ptr = next;
     }
@@ -217,12 +231,12 @@ struct list *list_reverse(struct list *list)
     return prev;
 }
 
-struct list *list_sort(struct list *list, list_compare_func fn)
+struct list *list_sort(struct list *list, list_compare_func fn, void *userdata)
 {
     struct list *sorted = NULL;
 
     for (struct list *ptr = list; ptr != NULL; ptr = ptr->next)
-        sorted = list_insert_sorted(sorted, ptr->data, fn);
+        sorted = list_insert_sorted(sorted, ptr->data, fn, userdata);
 
     return sorted;
 }
@@ -265,14 +279,17 @@ struct list *list_nth(struct list *list, unsigned int n)
 
 struct list *list_find(struct list *list, const void *data)
 {
-    return list_find_custom(list, data, _list_data_equal);
+    return list_find_custom(list, data, _list_data_equal, NULL);
 }
 
 struct list *list_find_custom(
-        struct list *list, const void *data, list_compare_func fn)
+        struct list *list,
+        const void *data,
+        list_compare_func fn,
+        void *userdata)
 {
     for (struct list *ptr = list; ptr != NULL; ptr = ptr->next)
-        if (!fn(ptr->data, data))
+        if (!fn(ptr->data, data, userdata))
             return ptr;
 
     return NULL;
@@ -305,13 +322,14 @@ void *_list_copy_data(const void *data, void *userdata)
     return (void *)data;
 }
 
-int _list_data_equal(const void *a, const void *b)
+int _list_data_equal(const void *a, const void *b, void *ud)
 {
     return !(a == b);
 }
 
-struct list *_list_link_before(
-        struct list *list, struct list *link, struct list *newlink)
+struct list *_list_link_before(struct list *list,
+                               struct list *link,
+                               struct list *newlink)
 {
     if (!list)
         return newlink;
@@ -327,8 +345,9 @@ struct list *_list_link_before(
     return (link == list) ? newlink : list;
 }
 
-struct list *_list_link_after(
-        struct list *list, struct list *link, struct list *newlink)
+struct list *_list_link_after(struct list *list,
+                              struct list *link,
+                              struct list *newlink)
 {
     if (!list)
         return newlink;

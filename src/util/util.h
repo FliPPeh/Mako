@@ -22,10 +22,10 @@ const char *itoa(int i);
 char *strstrp(char *src);
 
 /*
- * Split the source string at the first occurence of a separater, storing the
+ * Split the source string at the first occurence of a separator, storing the
  * parts into the destination buffers.
  *
- * Returns a pointer to the first character after the separater for easier
+ * Returns a pointer to the first character after the separator for easier
  * chaining.
  */
 char *strpart(const char *src, char sep,
@@ -33,6 +33,8 @@ char *strpart(const char *src, char sep,
         char *destb, size_t sizeb);
 
 int regex_match(const char *regex, const char *str);
+
+char *strdup(const char *s);
 
 #ifdef DEBUG
 #   define ASSERT(cond, lev, action)                                    \

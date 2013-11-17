@@ -19,7 +19,7 @@ int lua_util_push_irc_channel_meta(lua_State *L, const struct irc_channel *ch);
 int lua_util_push_irc_channel_modes(lua_State *L, const struct irc_channel *ch);
 int lua_util_push_irc_channel_users(lua_State *L, const struct irc_channel *ch);
 
-int lua_util_push_irc_caps(lua_State *L, const struct list *caps);
+int lua_util_push_irc_caps(lua_State *L, const struct hashtable *caps);
 
 /*
  * Checkers

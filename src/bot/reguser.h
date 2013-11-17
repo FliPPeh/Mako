@@ -99,9 +99,6 @@ void reguser_unset_flags(struct reguser *usr, uint32_t flags);
 /*
  * Internals
  */
-inline int _reguser_find_by_name(const void *data, const void *userdata);
-inline int _reguser_find_by_mask(const void *data, const void *userdata);
-
 uint32_t _reguser_strtoflg(const char *src);
 void _reguser_flgtostr(uint32_t flags, char *dst, size_t dsts);
 

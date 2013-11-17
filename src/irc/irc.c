@@ -109,39 +109,15 @@ int irc_user_cmp(const char *a, const char *b)
 }
 
 /* Server capabilities */
-const char *irc_capability_get(struct list *cl, const char *cap)
+const char *irc_capability_get(struct hashtable *cl, const char *cap)
 {
-    struct list *pos = list_find_custom(cl, cap, _irc_cap_by_key);
-
-    if (pos)
-        return (list_data(pos, struct irc_capability *))->value;
-
-    return NULL;
+    return hashtable_lookup(cl, cap);
 }
 
-int irc_capability_set(
-        struct list **cl,
-        const char *cap,
-        const char *val)
+int irc_capability_set(struct hashtable *cl, const char *cap, const char *val)
 {
-    *cl = list_append(*cl, _irc_capability_new(cap, val));
+    hashtable_insert(cl, strdup(cap), strdup(val));
 
     return 0;
 }
 
-/* Utility functions */
-int _irc_cap_by_key(const void *list, const void *search)
-{
-    return strcmp(((struct irc_capability *)list)->capability, search);
-}
-
-struct irc_capability *_irc_capability_new(const char *key, const char *val)
-{
-    struct irc_capability *cap = malloc(sizeof(*cap));
-    ASSERT(cap != NULL, LOG_ERROR, return NULL);
-
-    strncpy(cap->capability, key, sizeof(cap->capability) - 1);
-    strncpy(cap->value, val ? val : "", sizeof(cap->value) - 1);
-
-    return cap;
-}

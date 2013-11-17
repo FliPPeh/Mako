@@ -193,17 +193,18 @@ int lua_util_push_irc_channel_users(lua_State *L, const struct irc_channel *ch)
     return 1;
 }
 
-int lua_util_push_irc_caps(lua_State *L, const struct list *caps)
+int lua_util_push_irc_caps(lua_State *L, const struct hashtable *caps)
 {
     int clist = (lua_newtable(L), lua_gettop(L));
-    const struct list *ptr = NULL;
 
-    LIST_FOREACH(caps, ptr) {
-        const struct irc_capability *cap =
-            list_data(ptr, const struct irc_capability *);
+    struct hashtable_iterator iter;
+    void *k = NULL;
+    void *v = NULL;
 
-        lua_pushstring(L, cap->value);
-        lua_setfield(L, clist, cap->capability);
+    hashtable_iterator_init(&iter, caps);
+    while (hashtable_iterator_next(&iter, &k, &v)) {
+        lua_pushstring(L, v);
+        lua_setfield(L, clist, k);
     }
 
     return 1;

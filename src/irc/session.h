@@ -10,6 +10,8 @@
 
 /* Some generic buffer sizes */
 #define HOSTNAME_MAX 256
+#define SERVERPASS_MAX 256
+
 #define BUFFER_MAX (1024 * 8) /* 8 KiB */
 
 #define NICK_MAX 32
@@ -110,23 +112,32 @@ struct irc_session
 
     char hostname[HOSTNAME_MAX];
     uint16_t portno;
+    char serverpass[SERVERPASS_MAX];
 
     int kill;
 
     char buffer[BUFFER_MAX];
     size_t bufuse;
 
-    struct log_context log;
-
     char nick[NICK_MAX];
     char user[USER_MAX];
     char real[REAL_MAX];
 
-    struct list *channels;
-    struct list *capabilities;
+    struct hashtable *channels;
+    struct hashtable *capabilities;
 
     struct irc_callbacks cb;
 };
+
+void sess_init(struct irc_session *sess,
+               const char *server,
+               uint16_t port,
+               const char *nick,
+               const char *user,
+               const char *real,
+               const char *pass);
+
+void sess_destroy(struct irc_session *sess);
 
 /*
  * Util
@@ -152,6 +163,7 @@ int sess_handle_mode_change(
         const char *chan,
         const char *modestr,
         char args[][IRC_PARAM_MAX],
-        size_t argstart);
+        size_t argstart,
+        size_t argmax);
 
 #endif /* defined _SESSION_H_ */

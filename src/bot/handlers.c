@@ -5,6 +5,7 @@
 #include "bot/bot.h"
 #include "bot/reguser.h"
 #include "bot/module.h"
+#include "bot/helpers.h"
 
 #include "modules/module.h"
 
@@ -42,14 +43,14 @@ int bot_split_ctcp(const char *source,
 
 int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
 {
-    struct list *mod = NULL;
+    struct hashtable_iterator iter;
+    void *k;
+    void *v;
 
-    LIST_FOREACH(bot->modules, mod) {
-        struct mod_loaded *m = list_data(mod, struct mod_loaded *);
-
-        if (m->state->hooks & M(ev->type))
-            m->handler_func(ev);
-    }
+    hashtable_iterator_init(&iter, bot->modules);
+    while (hashtable_iterator_next(&iter, &k, &v))
+        if (((struct mod_loaded *)v)->state->hooks & M(ev->type))
+            ((struct mod_loaded *)v)->handler_func(ev);
 
     return 0;
 }
@@ -67,7 +68,6 @@ int bot_handle_command(struct bot *bot,
             && reguser_match(usr, M(FLAG_MASTER), CK_MIN)) {
 
         struct irc_prefix_parts user;
-        struct irc_message response;
 
         irc_split_prefix(&user, prefix);
 
@@ -75,42 +75,52 @@ int bot_handle_command(struct bot *bot,
             if (!mod_load(bot, args)) {
                 struct mod_loaded *mod = mod_get(bot, args);
 
-                irc_mkprivmsg(&response,
-                        irc_proper_target(target, user.nick),
+                respond(bot, target, user.nick,
                         "Successfully loaded module '%s' (%s)",
-                        mod->path, mod->state->name);
+                            mod->path, mod->state->name);
             } else {
-                irc_mkprivmsg(&response,
-                        irc_proper_target(target, user.nick),
+                respond(bot, target, user.nick,
                         "Failed loading module './%s.so'", args);
             }
-
-            sess_sendmsg(bot->sess, &response);
         } else if (!strcmp(cmd, "unload_so")) {
             struct mod_loaded *mod = mod_get(bot, args);
 
             if (mod) {
                 if (!mod_unload(bot, mod))
-                    irc_mkprivmsg(&response,
-                            irc_proper_target(target, user.nick),
+                    respond(bot, target, user.nick,
                             "Successfully unloaded module './%s.so'", args);
                 else
-                    irc_mkprivmsg(&response,
-                            irc_proper_target(target, user.nick),
+                    respond(bot, target, user.nick,
                             "Failed unloading module '%s'", args);
             } else {
-                irc_mkprivmsg(&response,
-                        irc_proper_target(target, user.nick),
+                respond(bot, target, user.nick,
                         "No such module './%s.so'", args);
             }
+        } else if (!strcmp(cmd, "reload_so")) {
+            struct mod_loaded *mod = mod_get(bot, args);
+            bool unloaded = false;
 
-            sess_sendmsg(bot->sess, &response);
+            if (mod != NULL)
+                unloaded = !mod_unload(bot, mod);
+
+            if (!mod_load(bot, args)) {
+                struct mod_loaded *mod = mod_get(bot, args);
+
+                if (unloaded)
+                    respond(bot, target, user.nick,
+                        "Successfully reloaded module '%s' (%s)",
+                            mod->path, mod->state->name);
+                else
+                    respond(bot, target, user.nick,
+                        "Successfully loaded module '%s' (%s)",
+                            mod->path, mod->state->name);
+            } else {
+                respond(bot, target, user.nick,
+                    "Failed to load module '%s'", args);
+            }
+
         } else if (!strcmp(cmd, "echo")) {
-            irc_mkprivmsg_resp(&response,
-                    irc_proper_target(target, user.nick), user.nick,
-                    "%s", args);
-
-            sess_sendmsg(bot->sess, &response);
+            respond(bot, target, user.nick, "%s", args);
         }
     }
 
@@ -410,65 +420,7 @@ int bot_on_ctcp(struct bot *bot,
         const char *ctcp,
         const char *args)
 {
-#if 0
-    struct irc_prefix_parts user;
-    struct irc_message response;
-#endif
     int priv = !irc_is_channel(target);
-
-#if 0
-    irc_split_prefix(&user, prefix);
-
-    if (!strcmp(ctcp, "ACTION")) {
-        /* Core Pseudo-CTCP: ACTION, don't treat as real CTCP */
-        return bot_on_action(bot, prefix, target, args);
-    } else if (!strcmp(ctcp, "LOAD_MODULE")) {
-        if (!mod_load(bot, args)) {
-            struct mod_loaded *mod = mod_get(bot, args);
-
-            irc_mkctcp_response(&response, user.nick, ctcp,
-                    "Successfully loaded module '%s' (%s)",
-                        mod->path, mod->state->name);
-        } else {
-            irc_mkctcp_response(&response, user.nick, ctcp,
-                "Failed loading module './mod_%s.so'", args);
-        }
-
-        sess_sendmsg(bot->sess, &response);
-    } else if (!strcmp(ctcp, "UNLOAD_MODULE")) {
-        struct mod_loaded *mod = mod_get(bot, args);
-
-        if (mod) {
-            if (!mod_unload(bot, mod))
-                irc_mkctcp_response(&response, user.nick, ctcp,
-                    "Successfully unloaded module './mod_%s.so'", args);
-            else
-                irc_mkctcp_response(&response, user.nick, ctcp,
-                    "Failed unloading module '%s'", args);
-        } else {
-            irc_mkctcp_response(&response, user.nick, ctcp,
-                "No such module './mod_%s.so'", args);
-        }
-
-        sess_sendmsg(bot->sess, &response);
-    } else if (!strcmp(ctcp, "MODULES")) {
-        struct list *modptr = NULL;
-        struct irc_message response;
-        int n = 0;
-
-        LIST_FOREACH(bot->modules, modptr) {
-            struct mod_loaded *mod = modptr->data;
-
-            irc_mkctcp_response(&response, user.nick, ctcp,
-                "#%d: %s (%s) - '%s'",
-                    ++n, mod->state->name, mod->path, mod->state->descr);
-            sess_sendmsg(bot->sess, &response);
-        }
-
-        irc_mkctcp_response(&response, user.nick, ctcp, "%d modules loaded", n);
-        sess_sendmsg(bot->sess, &response);
-    }
-#endif
 
     return bot_dispatch_event(bot, &(struct mod_event) {
         .type = priv ? EVENT_PRIVATE_CTCP_REQUEST : EVENT_PUBLIC_CTCP_REQUEST,

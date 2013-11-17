@@ -11,8 +11,47 @@
 #include "irc/net/socket.h"
 
 #include "util/log.h"
-#include "util/list.h"
+#include "util/hashtable.h"
 #include "util/util.h"
+
+void sess_init(struct irc_session *sess,
+               const char *server,
+               uint16_t port,
+               const char *nick,
+               const char *user,
+               const char *real,
+               const char *pass)
+{
+    memset(sess, 0, sizeof(*sess));
+
+    sess->channels = hashtable_new_with_free(
+            ascii_hash,
+            ascii_equal,
+            free,
+            irc_channel_free);
+
+    sess->capabilities = hashtable_new_with_free(
+            ascii_hash,
+            ascii_equal,
+            free,
+            free);
+
+    sess->start = time(NULL);
+
+    strncpy(sess->hostname, server, sizeof(sess->hostname) - 1);
+    sess->portno = port;
+
+    strncpy(sess->nick, nick, sizeof(sess->nick) - 1);
+    strncpy(sess->user, user, sizeof(sess->user) - 1);
+    strncpy(sess->real, real, sizeof(sess->real) - 1);
+    strncpy(sess->serverpass, pass, sizeof(sess->serverpass) - 1);
+}
+
+void sess_destroy(struct irc_session *sess)
+{
+    hashtable_free(sess->channels);
+    hashtable_free(sess->capabilities);
+}
 
 /*
  * Util
@@ -96,6 +135,8 @@ int sess_main(struct irc_session *sess)
         if (sess_connect(sess) < 0)
             break;
 
+        time(&sess->session_start);
+
         /* Login */
         irc_mkmessage(&nick, "NICK", sess->nick, NULL, NULL);
         irc_mkmessage(&user, "USER", sess->user, "*", "*", NULL,
@@ -103,6 +144,13 @@ int sess_main(struct irc_session *sess)
 
         sess_sendmsg(sess, &nick);
         sess_sendmsg(sess, &user);
+
+        if (strcmp(sess->serverpass, "") != 0) {
+            struct irc_message pass;
+
+            irc_mkmessage(&pass, "PASS", sess->serverpass, NULL, NULL);
+            sess_sendmsg(sess, &pass);
+        }
 
         /* Inner loop, receive and handle data */
         while (!sess->kill) {
@@ -188,11 +236,8 @@ int sess_main(struct irc_session *sess)
             sess->cb.on_disconnect(sess->cb.arg);
 
         /* Session is finished, free resources and start again unless killed */
-        list_free_all(sess->channels, irc_channel_free);
-        list_free_all(sess->capabilities, free);
-
-        sess->channels = NULL;
-        sess->capabilities = NULL;
+        hashtable_clear(sess->channels);
+        hashtable_clear(sess->capabilities);
 
         sess_disconnect(sess);
     }
@@ -231,10 +276,10 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             memcpy(capability, msg->params[i], sizeof(capability));
 
             if (!(eq = strchr(msg->params[i], '='))) {
-                irc_capability_set(&sess->capabilities, msg->params[i], NULL);
+                irc_capability_set(sess->capabilities, msg->params[i], NULL);
             } else {
                 *eq = '\0';
-                irc_capability_set(&sess->capabilities, msg->params[i], eq + 1);
+                irc_capability_set(sess->capabilities, msg->params[i], eq + 1);
             }
         }
     } else if (!strcmp(msg->command, "332")) {
@@ -284,7 +329,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                msg->prefix,
                msg->params[1], /* channel */
                msg->params[2], /* modestring */
-               msg->params, 3); /* param start */
+               msg->params, 3, msg->paramcount); /* param start and end */
 
     } else if (!strcmp(msg->command, "329")) {
         /* REPL_MODE2 */
@@ -374,10 +419,14 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             struct irc_message who;
             struct irc_message mode;
 
-            irc_channel_add(&sess->channels, msg->params[0]);
+            const char *channel = msg->paramcount > 0
+                ? msg->params[0]
+                : msg->msg;
 
-            irc_mkmessage(&who, "WHO", msg->params[0], NULL, NULL);
-            irc_mkmessage(&mode, "MODE", msg->params[0], NULL, NULL);
+            irc_channel_add(sess->channels, channel);
+
+            irc_mkmessage(&who, "WHO", channel, NULL, NULL);
+            irc_mkmessage(&mode, "MODE", channel, NULL, NULL);
 
             sess_sendmsg(sess, &who);
             sess_sendmsg(sess, &mode);
@@ -403,11 +452,16 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             goto exit_err;
         }
 
-        if (!irc_user_cmp(msg->prefix, sess->nick))
-            irc_channel_del(&sess->channels, target);
-        else
-            irc_channel_del_user(target,
-                    irc_channel_get_user(target, msg->prefix));
+        if (!irc_user_cmp(msg->prefix, sess->nick)) {
+            irc_channel_del(sess->channels, target);
+        } else {
+            struct irc_user *usr = irc_channel_get_user(target, msg->prefix);
+
+            if (!usr)
+                log_warn("Tried to remove unknown user '%s'", msg->prefix);
+            else
+                irc_channel_del_user(target, usr);
+        }
 
     } else if (!strcmp(msg->command, "KICK")) {
         struct irc_channel *target = NULL;
@@ -430,23 +484,27 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
         }
 
         if (!irc_user_cmp(msg->params[1], sess->nick))
-            irc_channel_del(&sess->channels, target);
+            irc_channel_del(sess->channels, target);
         else
             irc_channel_del_user(target, utarget);
 
     } else if (!strcmp(msg->command, "QUIT")) {
-        struct list *pos = NULL;
-
         if (sess->cb.on_quit)
             sess->cb.on_quit(sess->cb.arg, msg->prefix, msg->msg);
 
-        LIST_FOREACH(sess->channels, pos)
-            irc_channel_del_user(
-                    list_data(pos, struct irc_channel *),
-                    irc_channel_get_user(pos->data, msg->prefix));
+        struct hashtable_iterator iter;
+        void *k = NULL;
+        void *v = NULL;
+
+        hashtable_iterator_init(&iter, sess->channels);
+        while (hashtable_iterator_next(&iter, &k, &v)) {
+            struct irc_user *usr = irc_channel_get_user(v, msg->prefix);
+
+            if (usr)
+                irc_channel_del_user(v, usr);
+        }
 
     } else if (!strcmp(msg->command, "NICK")) {
-        struct list *pos = NULL;
         struct irc_user *user = NULL;
         const char *newnick = msg->paramcount > 0
             ? msg->params[0]
@@ -456,25 +514,31 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
         char newprefix[IRC_PREFIX_MAX] = {0};
         char oldprefix[IRC_PREFIX_MAX] = {0};
 
-        oldpostfix = strchr(msg->prefix, '!');
-
-        strncpy(oldprefix, msg->prefix, sizeof(oldprefix) - 1);
-        strncat(newprefix, newnick, sizeof(newprefix) - 1);
-        strncat(newprefix, oldpostfix, sizeof(newprefix) - 1);
-
         if (!irc_user_cmp(msg->prefix, sess->nick)) {
             memset(sess->nick, 0, sizeof(sess->nick));
             strncpy(sess->nick, newnick, sizeof(sess->nick) - 1);
         }
 
-        LIST_FOREACH(sess->channels, pos)
-            if ((user = irc_channel_get_user(
-                            list_data(pos, struct irc_channel *), msg->prefix)))
-                /* irc_channel_user_rename(user, newprefix); */
-                strncpy(user->prefix, newprefix, IRC_PREFIX_MAX - 1);
+        /* Check for a valid prefix before proceeding. */
+        if ((oldpostfix = strchr(msg->prefix, '!')) != NULL) {
+            strncpy(oldprefix, msg->prefix, sizeof(oldprefix) - 1);
+            strncat(newprefix, newnick, sizeof(newprefix) - 1);
+            strncat(newprefix, oldpostfix, sizeof(newprefix) - 1);
 
-        if (sess->cb.on_nick)
-            sess->cb.on_nick(sess->cb.arg, oldprefix, newprefix);
+            struct hashtable_iterator iter;
+            void *k = NULL;
+            void *v = NULL;
+
+            hashtable_iterator_init(&iter, sess->channels);
+            while (hashtable_iterator_next(&iter, &k, &v))
+                if ((user = irc_channel_get_user(v, msg->prefix)))
+                    irc_channel_rename_user(v, user, newprefix);
+
+            if (sess->cb.on_nick)
+                sess->cb.on_nick(sess->cb.arg, oldprefix, newprefix);
+        } else {
+            log_warn("Invalid prefix");
+        }
 
     } else if (!strcmp(msg->command, "INVITE")) {
         if (sess->cb.on_invite)
@@ -512,7 +576,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                     msg->prefix,
                     msg->params[0],
                     msg->params[1],
-                    msg->params, 2);
+                    msg->params, 2, msg->paramcount);
     }
 
     return 0;
@@ -521,13 +585,15 @@ exit_err:
     return 1;
 }
 
+/* TODO: Clean this sumbitch up */
 int sess_handle_mode_change(
         struct irc_session *sess,
         const char *prefix,
         const char *chan,
         const char *modestr,
         char args[][IRC_PARAM_MAX],
-        size_t argstart)
+        size_t argstart,
+        size_t argmax)
 {
     int set = 1; /* 1 = set, 0 = unset */
     size_t i = argstart;
@@ -546,12 +612,18 @@ int sess_handle_mode_change(
 
     char *sep = chanmodes_cpy;
 
-    memcpy(chanmodes_cpy, chn, sizeof(chanmodes_cpy));
+    if ((chn == NULL) || (prf == NULL)) {
+        log_warn("No CHANMODES or PREFIX in ISUPPORT, "
+                 "unable to determine modes!");
+        return 0;
+    }
+
+    strncpy(chanmodes_cpy, chn, sizeof(chanmodes_cpy) - 1);
 
     chanmodes[0] = sep;
 
-    while ((sep = strstr(sep, ","))) {
-        chanmodes[j] = sep + 1;
+    while ((sep = strchr(sep, ','))) {
+        chanmodes[++j] = sep + 1;
         *sep++ = '\0';
     }
 
@@ -571,9 +643,14 @@ int sess_handle_mode_change(
 
         if ((strchr(chanmodes[MODE_LIST],   *modestr)) ||
             (strchr(chanmodes[MODE_REQARG], *modestr)) ||
-            (strchr(chanmodes[MODE_SETARG], *modestr) && !set)) {
+            ((strchr(chanmodes[MODE_SETARG], *modestr) && set))) {
 
-            arg = args[i++];
+            if (i < argmax) {
+                arg = args[i++];
+            } else {
+                log_error("too few mode parameters");
+                return 0;
+            }
 
             if (set) {
                 if (strchr(chanmodes[MODE_LIST], *modestr))
@@ -591,14 +668,22 @@ int sess_handle_mode_change(
                     irc_channel_unset_mode(t, *modestr);
             }
         } else if (strchr(usermodes, *modestr)) {
-            arg = args[i++];
+            if (i < argmax) {
+                arg = args[i++];
+            } else {
+                log_error("too few mode parameters");
+                return 0;
+            }
 
-            if (set)
-                irc_channel_user_set_mode(irc_channel_get_user(t, arg),
-                        *modestr);
+            struct irc_user *usr = irc_channel_get_user(t, arg);
+
+            if (!usr)
+                log_warn("unknown user '%s' for channel '%s'", arg, chan);
             else
-                irc_channel_user_unset_mode(irc_channel_get_user(t, arg),
-                        *modestr);
+                if (set)
+                    irc_channel_user_set_mode(usr, *modestr);
+                else
+                    irc_channel_user_unset_mode(usr, *modestr);
 
         } else {
             /* Unknown flags or whensets when not set */

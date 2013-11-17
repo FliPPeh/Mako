@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
 #include <regex.h>
 
-#include "util/util.h"
+#include "util.h"
 
 
 /*
@@ -24,7 +25,7 @@ char *strstrp(char *src)
 {
     char *ptr = src + strlen(src) - 1;
 
-    while (isspace(*ptr))
+    while (iscntrl(*ptr) || isspace(*ptr))
         *(ptr--) = '\0';
 
     ptr = src;
@@ -79,3 +80,13 @@ int regex_match(const char *regex, const char *str)
     return match;
 }
 
+char *strdup(const char *s)
+{
+    if (s == NULL)
+        return NULL;
+
+    char *d = malloc(strlen(s) + 1);
+
+    memcpy(d, s, strlen(s) + 1);
+    return d;
+}

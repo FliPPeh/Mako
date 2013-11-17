@@ -46,7 +46,7 @@ int mod_load(struct bot *bot, const char *name)
         goto exit_err_noalloc;
     }
 
-    mod = (struct mod_loaded *)malloc(sizeof(struct mod_loaded));
+    mod = malloc(sizeof(struct mod_loaded));
     memset(mod, 0, sizeof(*mod));
 
     mod->dlhandle = lib_handle;
@@ -84,7 +84,7 @@ int mod_load(struct bot *bot, const char *name)
         }
     }
 
-    bot->modules = list_append(bot->modules, mod);
+    hashtable_insert(bot->modules, strdup(mod->name), mod);
     return 0;
 
 exit_err:
@@ -96,7 +96,7 @@ exit_err_noalloc:
 
 int mod_unload(struct bot *bot, struct mod_loaded *mod)
 {
-    bot->modules = list_remove(bot->modules, mod, mod_free);
+    hashtable_remove(bot->modules, mod->name);
 
     return 0;
 }
@@ -118,13 +118,7 @@ void mod_free(void *arg)
 
 struct mod_loaded *mod_get(const struct bot *bot, const char *name)
 {
-    struct list *ptr = NULL;
-
-    LIST_FOREACH(bot->modules, ptr)
-        if (!strcmp(list_data(ptr, struct mod_loaded *)->name, name))
-            return list_data(ptr, struct mod_loaded *);
-
-    return NULL;
+    return hashtable_lookup(bot->modules, name);
 }
 
 void *mod_get_symbol(const struct mod_loaded *mod, const char *sym)

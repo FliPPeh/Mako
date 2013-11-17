@@ -15,7 +15,7 @@
 
 #include "irc/session.h"
 #include "util/util.h"
-#include "util/list.h"
+#include "util/hashtable.h"
 #include "util/log.h"
 
 /*
@@ -39,39 +39,46 @@ void sigint(int sig)
 int main(int argc, char **argv)
 {
     struct irc_session sess;
-
     struct bot bot;
+
     int autoload = 1;
 
     struct option lopts[] = {
-        { "noautoload", no_argument, &autoload, 0 },
-        { "help", no_argument,       NULL,  0  },
-        { "host", required_argument, NULL, 'h' },
-        { "port", required_argument, NULL, 'p' },
-        { "nick", required_argument, NULL, 'n' },
-        { "user", required_argument, NULL, 'u' },
-        { "real", required_argument, NULL, 'r' },
-        { NULL,   no_argument,       NULL,  0  }
+        { "noautoload", no_argument, &autoload,   0  },
+        { "help",       no_argument,       NULL,  0  },
+        { "host",       required_argument, NULL, 'h' },
+        { "password",   required_argument, NULL, 'P' },
+        { "port",       required_argument, NULL, 'p' },
+        { "nick",       required_argument, NULL, 'n' },
+        { "user",       required_argument, NULL, 'u' },
+        { "real",       required_argument, NULL, 'r' },
+        { NULL,         no_argument,       NULL,  0  }
     };
 
     log_init(NULL);
     log_set_minlevel(LOG_DEBUG);
 
-    memset(&sess, 0, sizeof(sess));
+    char hostname[HOSTNAME_MAX] = {0};
+    char serverpass[SERVERPASS_MAX] = {0};
+
+    char nick[NICK_MAX] = DEFAULT_NICK;
+    char user[USER_MAX] = DEFAULT_USER;
+    char real[REAL_MAX] = DEFAULT_REAL;
+
+    uint16_t portno = 6667;
+
     memset(&bot, 0, sizeof(bot));
 
-    sess.start = time(NULL);
-    sess.portno = 6667;
+    bot.modules = hashtable_new_with_free(
+            ascii_hash, ascii_equal, free, mod_free);
+
+    bot.regusers = hashtable_new_with_free(ascii_hash, ascii_equal, free, free);
 
     bot.sess = &sess;
 
-    strncpy(sess.nick, DEFAULT_NICK, sizeof(sess.nick) - 1);
-    strncpy(sess.user, DEFAULT_USER, sizeof(sess.user) - 1);
-    strncpy(sess.real, DEFAULT_REAL, sizeof(sess.real) - 1);
-
     for (;;) {
         int optidx = 0;
-        int opt = getopt_long(argc, argv, "h:p:n:u:r:", lopts, &optidx);
+        int opt = getopt_long(argc, argv, "h:P:p:n:u:r:", lopts, &optidx);
 
         if (opt < 0)
             break;
@@ -86,27 +93,32 @@ int main(int argc, char **argv)
 
             case 'h':
                 /* Set hostname */
-                strncpy(sess.hostname, optarg, sizeof(sess.hostname) - 1);
+                strncpy(hostname, optarg, sizeof(hostname) - 1);
+                break;
+
+            case 'P':
+                /* Set password */
+                strncpy(serverpass, optarg, sizeof(serverpass) - 1);
                 break;
 
             case 'n':
                 /* Set nickname */
-                strncpy(sess.nick, optarg, sizeof(sess.nick) - 1);
+                strncpy(nick, optarg, sizeof(nick) - 1);
                 break;
 
             case 'u':
                 /* Set username */
-                strncpy(sess.user, optarg, sizeof(sess.user) - 1);
+                strncpy(user, optarg, sizeof(user) - 1);
                 break;
 
             case 'r':
                 /* Set realname */
-                strncpy(sess.real, optarg, sizeof(sess.real) - 1);
+                strncpy(real, optarg, sizeof(real) - 1);
                 break;
 
             case 'p':
                 /* Set port number */
-                sess.portno = (uint16_t)atoi(optarg);
+                portno = (uint16_t)atoi(optarg);
                 break;
 
             case '?':
@@ -119,12 +131,13 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!strcmp(sess.hostname, "")) {
+    if (!strcmp(hostname, "")) {
         log_fatal("no hostname given, see --help for more information.");
 
         return 1;
     }
 
+    sess_init(&sess, hostname, portno, nick, user, real, serverpass);
     setup_callbacks(&bot);
 
     log_info("Loading admin list...");
@@ -145,9 +158,10 @@ int main(int argc, char **argv)
     log_debug("Saving state and cleaning up...");
     regusers_save(&bot, "admins.cfg");
 
-    list_free_all(bot.modules, mod_free);
-    list_free_all(bot.regusers, free);
+    hashtable_free(bot.modules);
+    hashtable_free(bot.regusers);
 
+    sess_destroy(&sess);
 
     log_info("Goodbye!");
     log_destroy();
@@ -160,6 +174,7 @@ int print_usage(const char *prgname)
     printf(
         "Usage: %s [OPTION]...\n\n"
         "  -h, --host=<HOST>     connect to hostname HOST\n"
+        "  -P, --password=<PASS> connect using password PASS\n"
         "  -p, --port=<PORT>     connect to port PORT\n"
         "  -n, --nick=<NICK>     set nickname to NICK\n"
         "  -u, --user=<USER>     set username to USER\n"

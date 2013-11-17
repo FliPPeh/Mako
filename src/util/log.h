@@ -48,7 +48,7 @@
     X(LOG_TRACE,   "trace",   log_trace, "\033[1m", "\033[0m")    \
     X(LOG_DEBUG,   "debug",   log_debug, "\033[1m", "\033[0m")    \
     X(LOG_INFO,    "info",    log_info,  "", "")              \
-    X(LOG_WARNING, "warning", log_warn,  "\033[1;33m", "\033[0m") \
+    X(LOG_WARNING, "warning", log_warn,  "\033[0;31m", "\033[0m") \
     X(LOG_ERROR,   "error",   log_error, "\033[1;31m", "\033[0m") \
     X(LOG_FATAL,   "fatal",   log_fatal, "\033[1;31m", "\033[0m") \
     X(LOG_WTF,     "wtf?",    log_wtf,   "\033[1;31m", "!?\033[0m")

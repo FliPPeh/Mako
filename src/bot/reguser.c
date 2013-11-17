@@ -22,7 +22,6 @@ const char _reguser_flags[] = { FLAGS '\0' };
 const char *_reguser_flags_repr[FLAGS_MAX] = { FLAGS };
 #undef X
 
-
 void regusers_load(struct bot *bot, const char *file)
 {
     char linebuf[512] = {0};
@@ -48,8 +47,8 @@ void regusers_load(struct bot *bot, const char *file)
                 if (strpart(p, ':',  b, sizeof(b) - 1, c, sizeof(c) - 1)) {
 
                     reguser_add(bot, a, _reguser_strtoflg(b), c);
-                    log_debug("Name: '%s', RegEx: '%s', Flags: %d",
-                            a, c, _reguser_strtoflg(b));
+                    log_debug("Name: '%s', RegEx: '%s', Flags: %s",
+                            a, c, b);
                 }
             }
 
@@ -66,11 +65,14 @@ int regusers_save(const struct bot *bot, const char *file)
     FILE *f;
 
     if ((f = fopen(file, "w"))) {
-        struct list *ptr = NULL;
+        struct hashtable_iterator iter;
+        void *k;
+        void *v;
 
-        LIST_FOREACH(bot->regusers, ptr) {
+        hashtable_iterator_init(&iter, bot->regusers);
+        while (hashtable_iterator_next(&iter, &k, &v)) {
             char flgstr[33] = {0};
-            struct reguser *usr = list_data(ptr, struct reguser *);
+            struct reguser *usr = v;
 
             _reguser_flgtostr(usr->flags, flgstr, sizeof(flgstr));
             fprintf(f, "%s:%s:%s\n", usr->name, flgstr, usr->mask);
@@ -86,24 +88,21 @@ int regusers_save(const struct bot *bot, const char *file)
 
 struct reguser *reguser_get(const struct bot *bot, const char *name)
 {
-    struct list *r = list_find_custom(
-            bot->regusers, name, _reguser_find_by_name);
-
-    if (r)
-        return list_data(r, struct reguser *);
-    else
-        return NULL;
+    return hashtable_lookup(bot->regusers, name);
 }
 
 struct reguser *reguser_find(const struct bot *bot, const char *pre)
 {
-    struct list *r = list_find_custom(
-            bot->regusers, pre, _reguser_find_by_mask);
+    struct hashtable_iterator iter;
+    void *k;
+    void *v;
 
-    if (r)
-        return list_data(r, struct reguser *);
-    else
-        return NULL;
+    hashtable_iterator_init(&iter, bot->regusers);
+    while (hashtable_iterator_next(&iter, &k, &v))
+        if (regex_match(((struct reguser *)v)->mask, pre))
+            return v;
+
+    return NULL;
 }
 
 int reguser_add(struct bot *bot, const char *name, uint32_t fl, const char *m)
@@ -120,13 +119,13 @@ int reguser_add(struct bot *bot, const char *name, uint32_t fl, const char *m)
     usr->flags = fl;
     strncpy(usr->mask, m, sizeof(usr->mask) - 1);
 
-    bot->regusers = list_append(bot->regusers, usr);
+    hashtable_insert(bot->regusers, strdup(usr->name), usr);
     return 0;
 }
 
 int reguser_del(struct bot *bot, struct reguser *usr)
 {
-    bot->regusers = list_remove(bot->regusers, usr, free);
+    hashtable_remove(bot->regusers, usr->name);
     return 0;
 }
 
@@ -172,16 +171,6 @@ void reguser_unset_flags(struct reguser *usr, uint32_t flags)
 /*
  * Internals
  */
-int _reguser_find_by_name(const void *data, const void *userdata)
-{
-    return strcasecmp(((struct reguser *)data)->name, (const char *)userdata);
-}
-
-int _reguser_find_by_mask(const void *data, const void *userdata)
-{
-    return !regex_match(((struct reguser *)data)->mask, (const char *)userdata);
-}
-
 uint32_t _reguser_strtoflg(const char *src)
 {
     uint32_t res = 0;

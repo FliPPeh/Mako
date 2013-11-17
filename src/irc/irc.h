@@ -22,6 +22,7 @@
 
 #include "irc/channel.h"
 #include "util/list.h"
+#include "util/hashtable.h"
 
 enum irc_mode_type
 {
@@ -41,13 +42,6 @@ struct irc_message
     char msg[IRC_TRAILING_MAX];
 };
 
-struct irc_capability
-{
-    char capability[IRC_CAPABILITY_MAX];
-    char value[IRC_PARAM_MAX];
-};
-
-
 /*
  * IRC message handling
  */
@@ -60,15 +54,7 @@ void irc_print_message(const struct irc_message *i);
 int irc_user_cmp(const char *a, const char *b);
 
 /* Server capabilities */
-const char *irc_capability_get(struct list *cl, const char *cap);
-int irc_capability_set(
-        struct list **cl,
-        const char *cap,
-        const char *val);
-
-/* Utility functions */
-int _irc_cap_by_key(const void *list, const void *search);
-
-struct irc_capability *_irc_capability_new(const char *key, const char *val);
+const char *irc_capability_get(struct hashtable *cl, const char *cap);
+int irc_capability_set(struct hashtable *cl, const char *cap, const char *val);
 
 #endif /* defined _IRC_H_ */

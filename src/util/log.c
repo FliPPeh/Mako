@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#include "util/log.h"
+#include "log.h"
 
 #define X(lvl, name, fun, prefmt, postfmt) name,
 static char *_log_levels[] = {
