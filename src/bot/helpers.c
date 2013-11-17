@@ -35,7 +35,7 @@ void notice(struct bot *b, const char *target, const char *fmt, ...)
 void respond(struct bot *b,
              const char *target,  /* where the message we're responding to was
                                      received from */
-             const char *rtarget, // user nickname to whom the response is
+             const char *rtarget, /* user nickname to whom the response is */
              const char *fmt,
              ...)
 {

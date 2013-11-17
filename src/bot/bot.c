@@ -137,7 +137,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+
     sess_init(&sess, hostname, portno, nick, user, real, serverpass);
+    log_info("Starting session as '%s' (user '%s', realname '%s')...",
+            sess.nick, sess.user, sess.real);
+
     setup_callbacks(&bot);
 
     log_info("Loading admin list...");
