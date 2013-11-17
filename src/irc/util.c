@@ -77,7 +77,7 @@ void irc_vmkdirectmessage(struct irc_message *dest,
                           const char *target,
                           const char *fmt, va_list args)
 {
-    irc_mkmessage(dest, type, (const char *[]){ target }, 1, fmt, args);
+    irc_vmkmessage(dest, type, (const char *[]){ target }, 1, fmt, args);
 }
 
 void irc_mkprivmsg(struct irc_message *dest,
