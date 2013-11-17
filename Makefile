@@ -15,7 +15,7 @@ MODULE_LIBS=$(addsuffix .so, $(MODULES))
 export MODSRCPATH=$(PWD)/src/modules
 
 bot: objects
-	$(CC) $(CFLAGS) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
 objects: $(OBJECTS)
 $(OBJECTS):
