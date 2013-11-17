@@ -138,8 +138,11 @@ int sess_main(struct irc_session *sess)
         time(&sess->session_start);
 
         /* Login */
-        irc_mkmessage(&nick, "NICK", sess->nick, NULL, NULL);
-        irc_mkmessage(&user, "USER", sess->user, "*", "*", NULL,
+        irc_mkmessage(&nick, "NICK",
+                (const char *[]){ sess->nick }, 1, NULL);
+
+        irc_mkmessage(&user, "USER",
+                (const char *[]){ sess->user, "*", "*" }, 3,
                 "%s", sess->real);
 
         sess_sendmsg(sess, &nick);
@@ -148,7 +151,9 @@ int sess_main(struct irc_session *sess)
         if (strcmp(sess->serverpass, "") != 0) {
             struct irc_message pass;
 
-            irc_mkmessage(&pass, "PASS", sess->serverpass, NULL, NULL);
+            irc_mkmessage(&pass, "PASS",
+                    (const char*[]){ sess->serverpass }, 1, NULL);
+
             sess_sendmsg(sess, &pass);
         }
 
@@ -217,7 +222,7 @@ int sess_main(struct irc_session *sess)
                              "ago (%s). Pinging server...",
                                 time(NULL) - lsol, buffer);
 
-                    irc_mkmessage(&ping, "PING", NULL, "%s", sess->hostname);
+                    irc_mkmessage(&ping, "PING", NULL, 0, "%s", sess->hostname);
 
                     if (sess_sendmsg(sess, &ping) <= 0)
                         break;
@@ -257,7 +262,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
     if (!strcmp(msg->command, "PING")) {
         struct irc_message pong;
 
-        irc_mkmessage(&pong, "PONG", NULL, "%s", msg->msg);
+        irc_mkmessage(&pong, "PONG", NULL, 0, "%s", msg->msg);
         sess_sendmsg(sess, &pong);
 
         if (sess->cb.on_ping)
@@ -425,8 +430,11 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
             irc_channel_add(sess->channels, channel);
 
-            irc_mkmessage(&who, "WHO", channel, NULL, NULL);
-            irc_mkmessage(&mode, "MODE", channel, NULL, NULL);
+            irc_mkmessage(&who, "WHO",
+                    (const char *[]){ channel }, 1, NULL);
+
+            irc_mkmessage(&mode, "MODE",
+                    (const char *[]){ channel }, 1, NULL);
 
             sess_sendmsg(sess, &who);
             sess_sendmsg(sess, &mode);
@@ -561,7 +569,9 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                     target->topic,
                     msg->msg);
 
-        irc_mkmessage(&topic, "TOPIC", msg->params[0], NULL, NULL);
+        irc_mkmessage(&topic, "TOPIC",
+                (const char *[]){ msg->params[0] }, 1, NULL);
+
         sess_sendmsg(sess, &topic);
 
     } else if (!strcmp(msg->command, "MODE")) {

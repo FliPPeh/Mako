@@ -20,49 +20,46 @@ struct irc_prefix_parts
  */
 int irc_split_prefix(struct irc_prefix_parts *dst, const char *prefix);
 
-/*
- * Weird function for easily creating formatted messages.
- *
- * command = the command to set
- * varargs: 2 parts, separated with a NULL.
- *            Part 1: Message params,
- *            Part 2: First arg = format string
- *                    Following = format args
- *
- * ex: irc_mkmessage(&msg, "PRIVMSG", "#channel", NULL, "Hello %s", "world");
- *
- * => PRIVMSG #channel :Hello World
- *
- */
-int irc_mkmessage(struct irc_message *dest, const char *command, ...);
-int irc_vmkmessage(struct irc_message *dest, const char *command, va_list args);
 
-int irc_mkmessage_params(struct irc_message *dest, ...);
-int irc_vmkmessage_params(struct irc_message *dest, va_list args);
+void irc_mkmessage(struct irc_message *dest,
+                   const char *cmd,
+                   const char *args[], size_t n,
+                   const char *fmt, ...);
 
-int irc_mkmessage_msg(struct irc_message *dest, const char *fmt, ...);
-int irc_vmkmessage_msg(struct irc_message *dest, const char *fmt, va_list pfa);
-
+void irc_vmkmessage(struct irc_message *dest,
+                    const char *cmd,
+                    const char *args[], size_t n,
+                    const char *fmt, va_list vargs);
 /*
  * Specific command utils
  */
-int irc_vmkdirectmessage(struct irc_message *dest,
-        const char *type, const char *target, const char *fmt, va_list args);
+void irc_vmkdirectmessage(struct irc_message *dest,
+                          const char *type,
+                          const char *target,
+                          const char *fmt, va_list args);
 
-int irc_mkprivmsg(struct irc_message *dest,
-        const char *target, const char *fmt, ...);
+void irc_mkprivmsg(struct irc_message *dest,
+                   const char *target,
+                   const char *fmt, ...);
 
-int irc_mknotice(struct irc_message *dest,
-        const char *target, const char *fmt, ...);
+void irc_mknotice(struct irc_message *dest,
+                  const char *target,
+                  const char *fmt, ...);
 
-int irc_mkprivmsg_resp(struct irc_message *dest,
-        const char *target, const char *rtarget, const char *fmt, ...);
+void irc_mkprivmsg_resp(struct irc_message *dest,
+                        const char *target,
+                        const char *rtarget,
+                        const char *fmt, ...);
 
-int irc_mkctcp_request(struct irc_message *dest,
-        const char *target, const char *ctcp, const char *msgfmt, ...);
+void irc_mkctcp_request(struct irc_message *dest,
+                        const char *target,
+                        const char *ctcp,
+                        const char *msgfmt, ...);
 
-int irc_mkctcp_response(struct irc_message *dest,
-        const char *target, const char *ctcp, const char *msgfmt, ...);
+void irc_mkctcp_response(struct irc_message *dest,
+                         const char *target,
+                         const char *ctcp,
+                         const char *msgfmt, ...);
 
 /*
  * Test commands
