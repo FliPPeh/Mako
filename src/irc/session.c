@@ -198,6 +198,8 @@ int sess_main(struct irc_session *sess)
                     &(sess->buffer_out[sess->buffer_out_start]);
 
                 unsigned len = irc_message_size(next);
+                len = MIN(len, FLOODPROT_MIN);
+
                 if (tokenbucket_consume(&sess->quota, len)) {
                     sess_sendmsg_real(sess, next);
 
