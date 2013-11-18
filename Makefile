@@ -3,7 +3,7 @@ LDFLAGS=-ldl -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c bot/helpers.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
-		util/list.c util/log.c util/util.c util/hashtable.c
+		util/list.c util/log.c util/util.c util/hashtable.c util/tokenbucket.c
 CC=clang
 
 

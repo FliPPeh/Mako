@@ -11,7 +11,7 @@
 
 /* Time formatting stuff */
 #define TIMEBUF_MAX 256
-#undef TIME_LOCALTIME
+#define TIME_LOCALTIME
 
 #ifdef TIME_LOCALTIME
 #   define TIME_GETTIME localtime

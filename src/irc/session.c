@@ -5,9 +5,9 @@
 
 #include <sys/select.h>
 
+#include "irc/session.h"
 #include "irc/irc.h"
 #include "irc/util.h"
-#include "irc/session.h"
 #include "irc/net/socket.h"
 
 #include "util/log.h"
@@ -45,6 +45,8 @@ void sess_init(struct irc_session *sess,
     strncpy(sess->user, user, sizeof(sess->user) - 1);
     strncpy(sess->real, real, sizeof(sess->real) - 1);
     strncpy(sess->serverpass, pass, sizeof(sess->serverpass) - 1);
+
+    tokenbucket_init(&sess->quota, FLOODPROT_CAPACITY, FLOODPROT_RATE);
 }
 
 void sess_destroy(struct irc_session *sess)
@@ -83,25 +85,47 @@ int sess_getln(struct irc_session *sess, char *linebuf, size_t linebufsiz)
 
 int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg)
 {
-    char buffer[IRC_MESSAGE_MAX] = {0};
     struct irc_message msgcopy = *msg;
 
     if (sess->cb.on_send_message)
         if (sess->cb.on_send_message(sess->cb.arg, &msgcopy))
             return 0;
 
-    strncat(buffer, msgcopy.command, sizeof(buffer) - 1);
+    if (sess->buffer_out_start == sess->buffer_out_end) {
+        /* Buffer empty, try to send immediately */
+        unsigned msglen = irc_message_size(&msgcopy) + 2; /* \r\n */
 
-    for (int i = 0; i < msgcopy.paramcount; ++i) {
-        strncat(buffer, " ", sizeof(buffer) - 1);
-        strncat(buffer, msgcopy.params[i], sizeof(buffer) - 1);
+        /* "Round up" the size to a minimum size, so lots of tiny messages
+         * are still effectively limited */
+        if (msglen < FLOODPROT_MIN)
+            msglen = FLOODPROT_MIN;
+
+        if (tokenbucket_consume(&sess->quota, msglen))
+            /* Buffer is empty and enough quota is left, send for realsies */
+            return sess_sendmsg_real(sess, &msgcopy);
+
+        /* Not enough quota left, drop down and push into queue */
+    } else if (((sess->buffer_out_end + 1) % FLOODPROT_BUFFER)
+            == sess->buffer_out_end) {
+        /* Buffer is full! Discard. */
+        log_warn("Flood protection: Outgoing buffer full, discarding message!");
+        return -1;
     }
 
-    if (strlen(msgcopy.msg) > 0) {
-        strncat(buffer, " :", sizeof(buffer) - 1);
-        strncat(buffer, msgcopy.msg, sizeof(buffer) - 1);
-    }
+    /* Buffer is neither empty nor full or message could not be sent. Append it
+     * to the buffer */
+    log_warn("Flood protection: message queued for later delivery");
+    sess->buffer_out[sess->buffer_out_end] = msgcopy;
+    sess->buffer_out_end = (sess->buffer_out_end + 1) % FLOODPROT_BUFFER;
 
+    return 0;
+}
+
+int sess_sendmsg_real(struct irc_session *sess, const struct irc_message *msg)
+{
+    char buffer[IRC_MESSAGE_MAX] = {0};
+
+    irc_message_to_string(msg, buffer, sizeof(buffer));
     log_debug(">> %s", buffer);
 
     return socket_sendfln(sess->fd, "%s", buffer) > 0;
@@ -125,115 +149,71 @@ int sess_main(struct irc_session *sess)
 {
     /* Jump into mainloop */
     while (!sess->kill) {
-        /* Last sign of life, used to detect connection loss */
-        time_t lsol = time(NULL);
         time_t lastidle = time(NULL);
-
-        struct irc_message nick;
-        struct irc_message user;
+        time_t last_sign_of_life = time(NULL);
 
         if (sess_connect(sess) < 0)
             break;
 
-        time(&sess->session_start);
+        sess->session_start = time(NULL);
 
-        /* Login */
-        irc_mkmessage(&nick, "NICK",
-                (const char *[]){ sess->nick }, 1, NULL);
-
-        irc_mkmessage(&user, "USER",
-                (const char *[]){ sess->user, "*", "*" }, 3,
-                "%s", sess->real);
-
-        sess_sendmsg(sess, &nick);
-        sess_sendmsg(sess, &user);
-
-        if (strcmp(sess->serverpass, "") != 0) {
-            struct irc_message pass;
-
-            irc_mkmessage(&pass, "PASS",
-                    (const char*[]){ sess->serverpass }, 1, NULL);
-
-            sess_sendmsg(sess, &pass);
-        }
+        sess_login(sess);
 
         /* Inner loop, receive and handle data */
         while (!sess->kill) {
-            int nfds;
-            fd_set reads;
+            /*
+             * Since both idle and flood protection are based on second
+             * precision, this is an optimal timeout
+             */
+            struct timeval timeout = { .tv_sec = 1, .tv_usec = 0 };
 
-            struct timeval timeout = {
-                .tv_sec = 1,
-                .tv_usec = 0
-            };
+            int res = sess_handle_data(sess, &timeout);
 
-            FD_ZERO(&reads);
-            FD_SET(sess->fd, &reads);
-
-            nfds = select(sess->fd + 1, &reads, NULL, NULL, &timeout);
-
-            if ((nfds > 0) && (FD_ISSET(sess->fd, &reads))) {
-                char line[512] = {0};
-                ssize_t data;
-                struct irc_message msg;
-
-                /* Update sign of life */
-                time(&lsol);
-
-                data = socket_recv(
-                        sess->fd,
-                        sess->buffer + sess->bufuse,
-                        sizeof(sess->buffer) - sess->bufuse - 1);
-
-                if (data <= 0) {
-                    if (data == 0)
-                        log_info("Server closed connection");
-                    else
-                        log_error("Couldn't receive data: %s", strerror(errno));
-
-                    break;
-                }
-
-                sess->bufuse += (size_t)data;
-
-                /*
-                 * While the last blob of data received contains a full line,
-                 * process it
-                 */
-                while (!sess_getln(sess, line, sizeof(line)))
-                    if (!irc_parse_message(line, &msg))
-                        sess_handle_message(sess, &msg);
-                    else
-                        log_warn("Failed to parse line '%s'", line);
+            if (res < 0) {
+                break;
+            } else if (res > 0) {
+                last_sign_of_life = time(NULL);
             } else {
-                /*
-                 * If last sign of life is over the configured limit, send a
-                 * ping to the server and inspect error code of send()
-                 */
-                if ((time(NULL) - lsol) > TIMEOUT) {
-                    struct tm *tm = TIME_GETTIME(&lsol);
-                    struct irc_message ping;
+                if ((time(NULL) - last_sign_of_life) >= TIMEOUT) {
+                    struct tm *tm = TIME_GETTIME(&last_sign_of_life);
 
                     char buffer[TIMEBUF_MAX] = {0};
-
                     strftime(buffer, sizeof(buffer), STRFTIME_FORMAT, tm);
 
                     log_info("Last sign of life was %d seconds "
                              "ago (%s). Pinging server...",
-                                time(NULL) - lsol, buffer);
+                                time(NULL) - last_sign_of_life, buffer);
 
+                    struct irc_message ping;
                     irc_mkmessage(&ping, "PING", NULL, 0, "%s", sess->hostname);
 
-                    if (sess_sendmsg(sess, &ping) <= 0)
+                    if (sess_sendmsg_real(sess, &ping) <= 0)
                         break;
                 }
             }
 
+            /* Try to send messages in outbuffer */
+            while (sess->buffer_out_start != sess->buffer_out_end) {
+                struct irc_message *next =
+                    &(sess->buffer_out[sess->buffer_out_start]);
+
+                unsigned len = irc_message_size(next);
+                if (tokenbucket_consume(&sess->quota, len)) {
+                    sess_sendmsg_real(sess, next);
+
+                    sess->buffer_out_start =
+                        (sess->buffer_out_start + 1) % FLOODPROT_BUFFER;
+                } else {
+                    break;
+                }
+            }
+
+            /* Check if we have to emit an idle event */
             if ((time(NULL) - lastidle) >= IDLE_INTERVAL) {
                 if (sess->cb.on_idle)
                     sess->cb.on_idle(sess->cb.arg, lastidle);
 
-                time(&lastidle);
+                lastidle = time(NULL);
             }
         }
 
@@ -245,6 +225,83 @@ int sess_main(struct irc_session *sess)
         hashtable_clear(sess->capabilities);
 
         sess_disconnect(sess);
+    }
+
+    return 0;
+}
+
+int sess_login(struct irc_session *sess)
+{
+    struct irc_message nick;
+    struct irc_message user;
+
+    irc_mkmessage(&nick, "NICK", (const char *[]){ sess->nick }, 1, NULL);
+    irc_mkmessage(&user, "USER",
+            (const char *[]){ sess->user, "*", "*" }, 3, "%s", sess->real);
+
+    sess_sendmsg_real(sess, &nick);
+    sess_sendmsg_real(sess, &user);
+
+    if (strcmp(sess->serverpass, "") != 0) {
+        struct irc_message pass;
+
+        irc_mkmessage(&pass, "PASS",
+                (const char*[]){ sess->serverpass }, 1, NULL);
+
+        sess_sendmsg_real(sess, &pass);
+    }
+
+    return 0;
+}
+
+/*
+ *  Waits for data on the socket, return value indicates one of three results:
+ *  < 0: error
+ *  > 0: number of bytes received (success)
+ *    0: timeout while waiting
+ */
+int sess_handle_data(struct irc_session *sess, struct timeval *timeout)
+{
+    fd_set reads;
+
+    FD_ZERO(&reads);
+    FD_SET(sess->fd, &reads);
+
+    int nfds = select(sess->fd + 1, &reads, NULL, NULL, timeout);
+
+    if ((nfds > 0) && (FD_ISSET(sess->fd, &reads))) {
+        char line[IRC_MESSAGE_MAX] = {0};
+
+        ssize_t data = socket_recv(
+                        sess->fd,
+                        sess->buffer + sess->bufuse,
+                        sizeof(sess->buffer) - sess->bufuse - 1);
+
+        if (data <= 0) {
+            if (data == 0)
+                log_info("Server closed connection");
+            else
+                log_error("Connection terminated unexpectedly: %s",
+                        strerror(errno));
+
+            return -1;
+        }
+
+        sess->bufuse += (size_t)data;
+
+        /*
+         * While the last blob of data received contains a full line,
+         * process it
+         */
+        struct irc_message msg;
+
+        while (!sess_getln(sess, line, sizeof(line)))
+            if (!irc_parse_message(line, &msg))
+                sess_handle_message(sess, &msg);
+            else
+                log_warn("Failed to parse line '%s'", line);
+
+        return data;
     }
 
     return 0;
@@ -575,18 +632,23 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
         sess_sendmsg(sess, &topic);
 
     } else if (!strcmp(msg->command, "MODE")) {
-        if (msg->paramcount < 2) {
-            log_warn("Expected at least 2 arguments, got %d", msg->paramcount);
+        if ((msg->paramcount > 0) && (!irc_is_channel(msg->params[0]))) {
+            log_debug("ignoring user mode on self");
+        } else {
+            if (msg->paramcount < 2) {
+                log_warn("Expected at least 2 arguments, got %d",
+                        msg->paramcount);
 
-            goto exit_err;
-        }
+                goto exit_err;
+            }
 
-        if (irc_user_cmp(msg->params[0], sess->nick))
-            sess_handle_mode_change(sess,
+            if (irc_user_cmp(msg->params[0], sess->nick))
+                sess_handle_mode_change(sess,
                     msg->prefix,
                     msg->params[0],
                     msg->params[1],
                     msg->params, 2, msg->paramcount);
+        }
     }
 
     return 0;

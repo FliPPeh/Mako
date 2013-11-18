@@ -48,6 +48,12 @@ struct irc_message
 int irc_parse_message(const char *line, struct irc_message *msg);
 void irc_print_message(const struct irc_message *i);
 
+unsigned irc_message_to_string(const struct irc_message *i,
+                               char *dest,
+                               size_t n);
+
+unsigned irc_message_size(const struct irc_message *i);
+
 /*
  * User comparison based on nick/host
  */
