@@ -16,6 +16,8 @@ struct tokenbucket
 };
 
 void tokenbucket_init(struct tokenbucket *b, unsigned capacity, unsigned rate);
+void tokenbucket_generate(struct tokenbucket *b);
 bool tokenbucket_consume(struct tokenbucket *b, unsigned tokens);
+
 
 #endif /* define TOKENBUCKET_H */

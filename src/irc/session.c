@@ -215,6 +215,9 @@ int sess_main(struct irc_session *sess)
 
                 lastidle = time(NULL);
             }
+
+            /* And regenerate some tokens */
+            tokenbucket_generate(&sess->quota);
         }
 
         if (sess->cb.on_disconnect)

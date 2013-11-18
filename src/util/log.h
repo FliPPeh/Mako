@@ -2,6 +2,7 @@
 #define _LOG_H_
 
 #include <stdio.h>
+#include <stdarg.h>
 
 /* Enable debugging? */
 #define DEBUG

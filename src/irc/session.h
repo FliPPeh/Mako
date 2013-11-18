@@ -40,7 +40,7 @@
  * of bytes removed from the quota will be FLOODPROT_MIN.
  */
 #define FLOODPROT_CAPACITY 512 /* the maximum burst message size in bytes */
-#define FLOODPROT_MIN       96
+#define FLOODPROT_MIN      128
 #define FLOODPROT_RATE      64 /* how many bytes per second are refilled */
 #define FLOODPROT_BUFFER    32 /* how many irc messages can be buffered */
 

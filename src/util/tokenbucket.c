@@ -13,7 +13,7 @@ void tokenbucket_init(struct tokenbucket *b, unsigned capacity, unsigned rate)
     b->fill_rate = rate;
 }
 
-bool tokenbucket_consume(struct tokenbucket *b, unsigned tokens)
+void tokenbucket_generate(struct tokenbucket *b)
 {
     time_t now = time(NULL);
 
@@ -24,7 +24,10 @@ bool tokenbucket_consume(struct tokenbucket *b, unsigned tokens)
     }
 
     b->last_update = now;
+}
 
+bool tokenbucket_consume(struct tokenbucket *b, unsigned tokens)
+{
     if (tokens <= b->tokens) {
         b->tokens -= tokens;
         return true;
