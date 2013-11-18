@@ -97,8 +97,7 @@ int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg)
 
         /* "Round up" the size to a minimum size, so lots of tiny messages
          * are still effectively limited */
-        if (msglen < FLOODPROT_MIN)
-            msglen = FLOODPROT_MIN;
+        msglen = MAX(msglen, FLOODPROT_MIN);
 
         if (tokenbucket_consume(&sess->quota, msglen))
             /* Buffer is empty and enough quota is left, send for realsies */
@@ -198,7 +197,7 @@ int sess_main(struct irc_session *sess)
                     &(sess->buffer_out[sess->buffer_out_start]);
 
                 unsigned len = irc_message_size(next);
-                len = MIN(len, FLOODPROT_MIN);
+                len = MAX(len, FLOODPROT_MIN);
 
                 if (tokenbucket_consume(&sess->quota, len)) {
                     sess_sendmsg_real(sess, next);
