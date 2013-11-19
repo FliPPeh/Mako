@@ -1,10 +1,11 @@
-CFLAGS=-Isrc/ -Wall -g -Wextra -Wno-unused-parameter -Wunused -std=c11 -O
-LDFLAGS=-ldl -Wl,-export-dynamic
+include Makefile.inc
+
+CFLAGS=$(PRJCFLAGS) -std=c11
+LDFLAGS=-ldl -Wl,-rpath,lib/libutil/ -Wl,-export-dynamic
 SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c bot/helpers.c \
 		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
 		irc/net/socket.c					  				\
-		util/list.c util/log.c util/util.c util/hashtable.c util/tokenbucket.c
-CC=clang
+		util/tokenbucket.c util/log.c util/util.c
 
 
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
@@ -14,16 +15,19 @@ MODULE_LIBS=$(addsuffix .so, $(MODULES))
 # Subdirectory within src/modules/ where each mod resides
 export MODSRCPATH=$(PWD)/src/modules
 
-bot: objects
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+bot: objects libutil
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS) lib/libutil/libutil.so.1.0
 
 objects: $(OBJECTS)
 $(OBJECTS):
 
+libutil:
+	make -C lib/libutil/
+
 modules: $(MODULES)
 
-$(MODULES): $(addsuffix .so, $@)
-	make -C "$(MODSRCPATH)/$@" INC=$(PWD)/src/ SRC=$(PWD)/src/
+$(MODULES): $(addsuffix .so, $@) force
+	make -C "$(MODSRCPATH)/$@" BASEDIR=$(PWD)
 	ln -sf "$(MODSRCPATH)/$@/$@.so" .
 	echo
 
@@ -31,7 +35,10 @@ clean:
 	@find -name '*.o' -print -delete | sed -e 's/^/Delete /'
 	@find -name '*.so' -print -delete | sed -e 's/^/Delete /'
 
-	$(forach module, $(MODULES), @make -C $(addprefix $(MODSRCPATH)/, \
+	@find -type f -perm +111 -print -delete | sed -e 's/^/Delete /'
+
+	$(foreach module, $(MODULES), @make -C $(addprefix $(MODSRCPATH)/, \
 		$(module)) clean)
 
-	@find -type f -perm +111 -print -delete | sed -e 's/^/Delete /'
+force:
+	@true

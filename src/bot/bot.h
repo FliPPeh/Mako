@@ -1,9 +1,10 @@
 #ifndef _BOT_H_
 #define _BOT_H_
 
+#include "container/list.h"
+#include "container/hashtable.h"
+
 #include "irc/irc.h"
-#include "util/list.h"
-#include "util/hashtable.h"
 
 /* Default settings */
 #define DEFAULT_NICK "Mako"

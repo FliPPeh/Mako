@@ -1,8 +1,9 @@
 #ifndef _IRC_CHANNEL_H_
 #define _IRC_CHANNEL_H_
 
+#include "container/hashtable.h"
+
 #include "irc/irc.h"
-#include "util/hashtable.h"
 
 struct irc_mode
 {

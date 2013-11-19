@@ -7,7 +7,8 @@
 #include "bot/reguser.h"
 
 #include "util/log.h"
-#include "util/hashtable.h"
+
+#include "container/hashtable.h"
 
 #include <sys/utsname.h>
 
@@ -135,6 +136,8 @@ int base_handle_ctcp(
         const char *ctcp,
         const char *args)
 {
+    (void)target;
+
     struct irc_message response;
     struct irc_prefix_parts user;
 

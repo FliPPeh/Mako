@@ -4,10 +4,11 @@
 
 #include <strings.h>
 
+#include "container/list.h"
+
 #include "bot/bot.h"
 #include "bot/reguser.h"
 
-#include "util/list.h"
 #include "util/log.h"
 #include "util/util.h"
 

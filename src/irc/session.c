@@ -5,13 +5,14 @@
 
 #include <sys/select.h>
 
+#include "container/hashtable.h"
+
 #include "irc/session.h"
 #include "irc/irc.h"
 #include "irc/util.h"
 #include "irc/net/socket.h"
 
 #include "util/log.h"
-#include "util/hashtable.h"
 #include "util/util.h"
 
 void sess_init(struct irc_session *sess,

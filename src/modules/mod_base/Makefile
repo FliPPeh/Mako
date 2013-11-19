@@ -1,6 +1,7 @@
-CFLAGS=-I$(INC) -Wall -g -fpic
+include ${BASEDIR}/Makefile.inc
+
+CFLAGS=$(PRJCFLAGS) -fpic
 LDFLAGS=-shared
-CC=clang -Wextra -std=gnu11
 
 SOURCES=mod_base.c
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
@@ -9,6 +10,5 @@ mod_base.so: objects
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
 objects: $(OBJECTS)
-
 $(OBJECTS):
 

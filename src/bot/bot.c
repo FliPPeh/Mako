@@ -13,9 +13,10 @@
 #include "bot/handlers.h"
 #include "bot/module.h"
 
+#include "container/hashtable.h"
+
 #include "irc/session.h"
 #include "util/util.h"
-#include "util/hashtable.h"
 #include "util/log.h"
 
 /*

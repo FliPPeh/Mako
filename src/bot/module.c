@@ -5,10 +5,11 @@
 #include <ctype.h>
 #include <dlfcn.h>
 
+#include "container/list.h"
+
 #include "bot/bot.h"
 #include "bot/module.h"
 
-#include "util/list.h"
 #include "util/log.h"
 #include "util/util.h"
 

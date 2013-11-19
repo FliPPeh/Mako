@@ -20,9 +20,10 @@
 #define IRC_USER_MAX 16
 #define IRC_HOST_MAX 80
 
+#include "container/hashtable.h"
+#include "container/list.h"
+
 #include "irc/channel.h"
-#include "util/list.h"
-#include "util/hashtable.h"
 
 enum irc_mode_type
 {

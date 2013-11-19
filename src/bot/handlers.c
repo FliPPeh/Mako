@@ -1,6 +1,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "container/list.h"
+
 #include "bot/handlers.h"
 #include "bot/bot.h"
 #include "bot/reguser.h"
@@ -13,7 +15,6 @@
 #include "irc/util.h"
 #include "irc/session.h"
 
-#include "util/list.h"
 #include "util/log.h"
 #include "util/util.h"
 

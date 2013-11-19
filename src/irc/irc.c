@@ -5,9 +5,10 @@
 
 #include <strings.h>
 
+#include "container/list.h"
+
 #include "irc/irc.h"
 #include "util/util.h"
-#include "util/list.h"
 
 
 /*
