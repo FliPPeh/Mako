@@ -1,5 +1,5 @@
-#ifndef _BOT_MODULE_H
-#define _BOT_MODULE_H
+#ifndef BOT_MODULE_H
+#define BOT_MODULE_H
 
 #include "bot/bot.h"
 #include "modules/module.h"
@@ -39,4 +39,4 @@ void *mod_get_symbol(const struct mod_loaded *mod, const char *sym);
 
 int mod_load_autoload(struct bot *bot, const char *file);
 
-#endif /* defined _BOT_MODULE_H_ */
+#endif /* defined BOT_MODULE_H */

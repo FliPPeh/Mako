@@ -1,5 +1,5 @@
-#ifndef _UTIL_H_
-#define _UTIL_H_
+#ifndef UTIL_H
+#define UTIL_H
 
 #include "util/log.h"
 
@@ -50,4 +50,4 @@ char *strdup(const char *s);
 #   define ASSERT(cond, lev, action)
 #endif
 
-#endif /* defined _UTIL_H_ */
+#endif /* defined UTIL_H */

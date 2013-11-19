@@ -1,9 +1,10 @@
-#ifndef _BOT_REGUSER_H_
-#define _BOT_REGUSER_H_
+#ifndef BOT_REGUSER_H
+#define BOT_REGUSER_H
+
+#include "bot/bot.h"
 
 #include <stdint.h>
 
-#include "bot/bot.h"
 
 /*
  * Turns any old number smaller then 32 into a power of two, used for
@@ -102,4 +103,4 @@ void reguser_unset_flags(struct reguser *usr, uint32_t flags);
 uint32_t _reguser_strtoflg(const char *src);
 void _reguser_flgtostr(uint32_t flags, char *dst, size_t dsts);
 
-#endif /* defined _BOT_REGUSER_H_ */
+#endif /* defined BOT_REGUSER_H */

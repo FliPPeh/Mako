@@ -2,12 +2,22 @@ include Makefile.inc
 
 CFLAGS=$(PRJCFLAGS) -std=c11
 LDFLAGS=-ldl -Wl,-rpath,lib/libutil/ -Wl,-export-dynamic
-SOURCES=bot/bot.c bot/module.c bot/handlers.c bot/reguser.c bot/helpers.c \
-		irc/irc.c irc/session.c irc/util.c irc/channel.c  	\
-		irc/net/socket.c					  				\
-		util/tokenbucket.c util/log.c util/util.c
 
+SOURCES=bot/bot.c          \
+		bot/module.c       \
+	   	bot/handlers.c     \
+		bot/reguser.c      \
+	   	bot/helpers.c      \
+		irc/irc.c          \
+		irc/session.c      \
+	   	irc/util.c         \
+	   	irc/channel.c      \
+		irc/net/socket.c   \
+		util/tokenbucket.c \
+	   	util/log.c         \
+		util/util.c
 
+# Same as $(SOURCES) but with each entry having a .o extension
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
 MODULES=mod_base mod_lua
 MODULE_LIBS=$(addsuffix .so, $(MODULES))
@@ -32,7 +42,7 @@ $(MODULES): $(addsuffix .so, $@) force
 	echo
 
 clean:
-	@find -name '*.o' -print -delete | sed -e 's/^/Delete /'
+	@find -name '*.o'  -print -delete | sed -e 's/^/Delete /'
 	@find -name '*.so' -print -delete | sed -e 's/^/Delete /'
 
 	@find -type f -perm +111 -print -delete | sed -e 's/^/Delete /'

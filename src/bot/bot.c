@@ -1,3 +1,15 @@
+#include "bot/bot.h"
+#include "bot/reguser.h"
+#include "bot/handlers.h"
+#include "bot/module.h"
+
+#include "irc/session.h"
+
+#include "util/util.h"
+#include "util/log.h"
+
+#include <libutil/container/hashtable.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,16 +20,6 @@
 #include <signal.h>
 #include <ctype.h>
 
-#include "bot/bot.h"
-#include "bot/reguser.h"
-#include "bot/handlers.h"
-#include "bot/module.h"
-
-#include "container/hashtable.h"
-
-#include "irc/session.h"
-#include "util/util.h"
-#include "util/log.h"
 
 /*
  * Startup

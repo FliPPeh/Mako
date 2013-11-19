@@ -1,10 +1,10 @@
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-
 #include "irc/channel.h"
 #include "util/log.h"
 #include "util/util.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 
 /* List management */

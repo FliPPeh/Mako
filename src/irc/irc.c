@@ -1,15 +1,14 @@
+#include "irc/irc.h"
+#include "util/util.h"
+
+#include <libutil/container/list.h>
+
+#include <strings.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-
-#include <strings.h>
-
-#include "container/list.h"
-
-#include "irc/irc.h"
-#include "util/util.h"
-
 
 /*
  * IRC message handling

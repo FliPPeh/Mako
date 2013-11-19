@@ -1,10 +1,11 @@
-#ifndef _BOT_H_
-#define _BOT_H_
-
-#include "container/list.h"
-#include "container/hashtable.h"
+#ifndef BOT_H
+#define BOT_H
 
 #include "irc/irc.h"
+
+#include <libutil/container/list.h>
+#include <libutil/container/hashtable.h>
+
 
 /* Default settings */
 #define DEFAULT_NICK "Mako"
@@ -23,4 +24,4 @@ struct bot
 
 int bot_send_message(const struct bot *bot, const struct irc_message *msg);
 
-#endif /* defined _BOT_H_ */
+#endif /* defined BOT_H */

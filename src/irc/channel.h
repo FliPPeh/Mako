@@ -1,9 +1,10 @@
-#ifndef _IRC_CHANNEL_H_
-#define _IRC_CHANNEL_H_
-
-#include "container/hashtable.h"
+#ifndef IRC_CHANNEL_H
+#define IRC_CHANNEL_H
 
 #include "irc/irc.h"
+
+#include <libutil/container/hashtable.h>
+
 
 struct irc_mode
 {
@@ -80,4 +81,4 @@ struct irc_user *_irc_user_new(const char *pref);
 struct irc_channel *_irc_channel_new(const char *name);
 struct irc_mode *_irc_mode_new(char mode, const char *arg);
 
-#endif /* defined _IRC_CHANNEL_H_ */
+#endif /* defined IRC_CHANNEL_H */

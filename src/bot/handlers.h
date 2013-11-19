@@ -1,10 +1,12 @@
-#ifndef _HANDLERS_H_
-#define _HANDLERS_H_
+#ifndef HANDLERS_H
+#define HANDLERS_H
 
 #include "bot/bot.h"
 #include "irc/irc.h"
 
 #include "modules/module.h"
+
+#include <time.h>
 
 
 int bot_split_ctcp(const char *source,

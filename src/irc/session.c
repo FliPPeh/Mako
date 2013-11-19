@@ -1,19 +1,19 @@
+#include "irc/session.h"
+#include "irc/irc.h"
+#include "irc/util.h"
+#include "irc/net/socket.h"
+#include "util/log.h"
+#include "util/util.h"
+
+#include <libutil/container/hashtable.h>
+
+#include <sys/select.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 
-#include <sys/select.h>
-
-#include "container/hashtable.h"
-
-#include "irc/session.h"
-#include "irc/irc.h"
-#include "irc/util.h"
-#include "irc/net/socket.h"
-
-#include "util/log.h"
-#include "util/util.h"
 
 void sess_init(struct irc_session *sess,
                const char *server,

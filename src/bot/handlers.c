@@ -1,8 +1,3 @@
-#include <string.h>
-#include <ctype.h>
-
-#include "container/list.h"
-
 #include "bot/handlers.h"
 #include "bot/bot.h"
 #include "bot/reguser.h"
@@ -17,6 +12,12 @@
 
 #include "util/log.h"
 #include "util/util.h"
+
+#include <libutil/container/list.h>
+
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 
 int bot_split_ctcp(const char *source,

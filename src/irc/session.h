@@ -1,14 +1,14 @@
-#ifndef _SESSION_H_
-#define _SESSION_H_
-
-#include <time.h>
-#include <stdint.h>
-
-#include <sys/select.h>
+#ifndef SESSION_H
+#define SESSION_H
 
 #include "irc/irc.h"
 #include "util/log.h"
 #include "util/tokenbucket.h"
+
+#include <sys/select.h>
+
+#include <time.h>
+#include <stdint.h>
 
 
 /* Some generic buffer sizes */
@@ -198,4 +198,4 @@ int sess_handle_mode_change(
         size_t argstart,
         size_t argmax);
 
-#endif /* defined _SESSION_H_ */
+#endif /* defined SESSION_H */

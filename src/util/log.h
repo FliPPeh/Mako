@@ -1,5 +1,5 @@
-#ifndef _LOG_H_
-#define _LOG_H_
+#ifndef LOG_H
+#define LOG_H
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -108,4 +108,4 @@ void log_perror_n(const char *n, const char *p, enum loglevel dv);
 LOGLEVELS
 #undef X
 
-#endif /* defined _LOG_H_ */
+#endif /* defined LOG_H */

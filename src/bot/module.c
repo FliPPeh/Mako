@@ -1,22 +1,19 @@
+#include "bot/bot.h"
+#include "bot/module.h"
+#include "irc/irc.h"
+#include "irc/session.h"
+#include "irc/net/socket.h"
+#include "util/log.h"
+#include "util/util.h"
+
+#include <libutil/container/list.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
 #include <dlfcn.h>
-
-#include "container/list.h"
-
-#include "bot/bot.h"
-#include "bot/module.h"
-
-#include "util/log.h"
-#include "util/util.h"
-
-#include "irc/irc.h"
-#include "irc/session.h"
-
-#include "irc/net/socket.h"
 
 
 int mod_load(struct bot *bot, const char *name)

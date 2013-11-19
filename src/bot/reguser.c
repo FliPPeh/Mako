@@ -1,16 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "bot/bot.h"
+#include "bot/reguser.h"
+#include "util/log.h"
+#include "util/util.h"
+
+#include <libutil/container/list.h>
 
 #include <strings.h>
 
-#include "container/list.h"
-
-#include "bot/bot.h"
-#include "bot/reguser.h"
-
-#include "util/log.h"
-#include "util/util.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
  * Generate a few arrays

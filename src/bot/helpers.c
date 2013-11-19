@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+
 void privmsg(struct bot *b, const char *target, const char *fmt, ...)
 {
     struct irc_message msg;

@@ -1,11 +1,11 @@
-#ifndef _MODULE_H_
-#define _MODULE_H_
-
-#include <stdlib.h>
-#include <stdint.h>
+#ifndef MODULE_H
+#define MODULE_H
 
 #include "bot/bot.h"
 #include "irc/irc.h"
+
+#include <stdlib.h>
+#include <stdint.h>
 
 #ifndef M
 #   define M(x) (1 << ((x) & 31))
@@ -219,4 +219,4 @@ extern struct mod mod_info;
 /* For being lazy */
 #define BOTREF (mod_info.bot)
 
-#endif /* defined _MODULE_H_ */
+#endif /* defined MODULE_H */

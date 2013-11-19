@@ -1,10 +1,10 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-
 #include "irc/irc.h"
 #include "irc/util.h"
 #include "util/util.h"
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 
 
 /*

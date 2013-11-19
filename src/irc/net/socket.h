@@ -1,5 +1,5 @@
-#ifndef _SOCKET_H_
-#define _SOCKET_H_
+#ifndef SOCKET_H
+#define SOCKET_H
 
 #define __USE_POSIX
 
@@ -24,4 +24,4 @@ ssize_t socket_recvall(int fd, void *buf, size_t minsize);
 
 ssize_t socket_sendfln(int fd, const char *fmt, ...);
 
-#endif /* defined _SOCKET_H_ */
+#endif /* defined SOCKET_H */

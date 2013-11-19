@@ -1,9 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <unistd.h>
+#include "irc/net/socket.h"
+#include "util/log.h"
 
 #define __USE_POSIX
 
@@ -13,8 +9,12 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "irc/net/socket.h"
-#include "util/log.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <unistd.h>
 
 
 const char *socket_addrstr(int fam, struct sockaddr *sa)

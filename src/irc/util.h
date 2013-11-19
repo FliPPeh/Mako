@@ -1,9 +1,9 @@
-#ifndef _IRC_UTIL_H_
-#define _IRC_UTIL_H_
-
-#include <stdarg.h>
+#ifndef IRC_UTIL_H
+#define IRC_UTIL_H
 
 #include "irc/irc.h"
+
+#include <stdarg.h>
 
 /* Simple macro that wraps a string literal between two \1 chars for CTCP. */
 #define MKCTCP(lit) "\x01" lit "\x01"
@@ -75,4 +75,4 @@ int irc_is_channel(const char *arg);
  */
 const char *irc_proper_target(const char *orig_target, const char *opt_user);
 
-#endif /* defined _IRC_UTIL_H_ */
+#endif /* defined IRC_UTIL_H */

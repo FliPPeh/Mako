@@ -1,5 +1,5 @@
-#ifndef _IRC_H_
-#define _IRC_H_
+#ifndef IRC_H
+#define IRC_H
 
 #include <time.h>
 
@@ -20,8 +20,8 @@
 #define IRC_USER_MAX 16
 #define IRC_HOST_MAX 80
 
-#include "container/hashtable.h"
-#include "container/list.h"
+#include <libutil/container/hashtable.h>
+#include <libutil/container/list.h>
 
 #include "irc/channel.h"
 
@@ -64,4 +64,4 @@ int irc_user_cmp(const char *a, const char *b);
 const char *irc_capability_get(struct hashtable *cl, const char *cap);
 int irc_capability_set(struct hashtable *cl, const char *cap, const char *val);
 
-#endif /* defined _IRC_H_ */
+#endif /* defined IRC_H */

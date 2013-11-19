@@ -1,5 +1,5 @@
-#ifndef _HELPERS_H_
-#define _HELPERS_H_
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #include "bot/bot.h"
 
@@ -17,4 +17,4 @@ void respond(struct bot *b,
              const char *fmt,
              ...);
 
-#endif /* defined _HELPERS_H_ */
+#endif /* defined HELPERS_H */
