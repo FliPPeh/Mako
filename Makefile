@@ -25,14 +25,14 @@ MODULE_LIBS=$(addsuffix .so, $(MODULES))
 # Subdirectory within src/modules/ where each mod resides
 export MODSRCPATH=$(PWD)/src/modules
 
-bot: objects libutil
+bot: $(OBJECTS) libutil
 	$(CC) $(OBJECTS) -o $@ $(LDFLAGS) lib/libutil/libutil.so.1.0
 
-objects: $(OBJECTS)
 $(OBJECTS):
 
+# libutil does not get recompiled unless there is no .so file for it
 libutil:
-	make -C lib/libutil/
+	@test ! -f "lib/libutil/libutil.so.1.0" && make -C lib/libutil/ || true
 
 modules: $(MODULES)
 

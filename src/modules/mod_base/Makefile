@@ -6,9 +6,8 @@ LDFLAGS=-shared
 SOURCES=mod_base.c
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
 
-mod_base.so: objects
+mod_base.so: $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
-objects: $(OBJECTS)
 $(OBJECTS):
 
