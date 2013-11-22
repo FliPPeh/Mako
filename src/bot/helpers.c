@@ -49,3 +49,41 @@ void respond(struct bot *b,
 
     privmsg(b, irc_proper_target(target, rtarget), "%s: %s", rtarget, buf);
 }
+
+void ctcp_response(struct bot *b,
+                   const char *target,
+                   const char *ctcp,
+                   const char *fmt, ...)
+{
+    if (fmt != NULL) {
+        va_list args;
+        char buf[IRC_MESSAGE_MAX] = {0};
+
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+
+        notice(b, target, "\x01%s %s\x01", ctcp, buf);
+    } else {
+        notice(b, target, "\x01%s\x01", ctcp);
+    }
+}
+
+void ctcp_request(struct bot *b,
+                  const char *target,
+                  const char *ctcp,
+                  const char *fmt, ...)
+{
+    if (fmt != NULL) {
+        va_list args;
+        char buf[IRC_MESSAGE_MAX] = {0};
+
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+
+        privmsg(b, target, "\x01%s %s\x01", ctcp, buf);
+    } else {
+        privmsg(b, target, "\x01%s\x01", ctcp);
+    }
+}

@@ -22,7 +22,7 @@
 #define PISTR "3.14159265358979323846264338327950288419716939937510582097494"
 
 // How many digits to use for version string. 2 ("3.") + 4 => 3.1415
-#define VERSION_IDX (2 + 4)
+#define VERSION_IDX (2 + 8)
 
 // Yes!
 const char *reks[] = {
@@ -54,17 +54,15 @@ enum coinflip_result
 /*
  * Provide standard CTCP replies that are nonessential for normal IRC usage
  */
-int base_handle_ctcp(
-        const char *prefix,
-        const char *target,
-        const char *ctcp,
-        const char *args);
+int base_handle_ctcp(const char *prefix,
+                     const char *target,
+                     const char *ctcp,
+                     const char *args);
 
-int base_handle_command(
-        const char *prefix,
-        const char *target,
-        const char *cmd,
-        const char *args);
+int base_handle_command(const char *prefix,
+                        const char *target,
+                        const char *cmd,
+                        const char *args);
 
 
 void format_timediff(char *b, size_t bs, time_t tdiff);
@@ -138,19 +136,34 @@ int base_handle_ctcp(
 {
     (void)target;
 
-    struct irc_message response;
     struct irc_prefix_parts user;
-
     irc_split_prefix(&user, prefix);
 
-    if (!strcmp(ctcp, "PING")) {
-        irc_mkctcp_response(&response, user.nick, ctcp, "%s", args);
-        bot_send_message(BOTREF, &response);
+    if (!strcmp(ctcp, "CLIENTINFO")) {
+        ctcp_response(BOTREF, user.nick, ctcp,
+            "CLIENTINFO PING VERSION ACTION SOURCE TIME USERINFO");
+
+    } else if (!strcmp(ctcp, "PING")) {
+        ctcp_response(BOTREF, user.nick, ctcp, "%s", args);
 
     } else if (!strcmp(ctcp, "VERSION")) {
-        irc_mkctcp_response(&response, user.nick, ctcp, versionstr);
-        bot_send_message(BOTREF, &response);
+        ctcp_response(BOTREF, user.nick, ctcp, versionstr);
 
+    } else if (!strcmp(ctcp, "SOURCE")) {
+        ctcp_response(BOTREF, user.nick, ctcp,
+            "https://github.com/FliPPeh/Modbot/");
+
+    } else if (!strcmp(ctcp, "TIME")) {
+        time_t now = time(NULL);
+        struct tm *nowtm = localtime(&now);
+        char timestr[256] = {0};
+
+        strftime(timestr, sizeof(timestr), "%Y-%m-%dT%T UTC%z (%Z)", nowtm);
+
+        ctcp_response(BOTREF, user.nick, ctcp, timestr);
+
+    } else if (!strcmp(ctcp, "USERINFO")) {
+        ctcp_response(BOTREF, user.nick, ctcp, "Hello :)");
     }
 
     return 0;
