@@ -1,6 +1,6 @@
 include Makefile.inc
 
-CFLAGS=$(PRJCFLAGS) -std=c11
+CFLAGS=$(PRJCFLAGS) -std=c99 -pedantic
 LDFLAGS=-ldl -Wl,-rpath,lib/libutil/ -Wl,-export-dynamic
 
 SOURCES=bot/bot.c          \

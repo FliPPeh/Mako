@@ -101,7 +101,7 @@ int mod_handle_event(struct mod_event *event)
     switch (event->type) {
     case EVENT_PRIVATE_CTCP_REQUEST:
         ;; /* hack! */
-        struct mod_event_command *req = &event->command;
+        struct mod_event_command *req = &event->event.command;
 
         return base_handle_ctcp(
                 req->prefix,
@@ -111,7 +111,7 @@ int mod_handle_event(struct mod_event *event)
 
     case EVENT_PUBLIC_COMMAND:
         ;;
-        struct mod_event_command *cmd = &event->command;
+        struct mod_event_command *cmd = &event->event.command;
 
         return base_handle_command(
                 cmd->prefix,

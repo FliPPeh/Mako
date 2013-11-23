@@ -166,7 +166,7 @@ struct mod_event
 {
     enum mod_event_type type;
 
-    union
+    union mod_event_event
     {
         struct mod_event_raw            raw;
         struct mod_event_message        message;
@@ -181,7 +181,7 @@ struct mod_event
         struct mod_event_mode_change    mode_change;
         struct mod_event_modes          modes;
         struct mod_event_idle           idle;
-    };
+    } event;
 };
 
 /*
