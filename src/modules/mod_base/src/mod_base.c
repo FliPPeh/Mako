@@ -84,9 +84,24 @@ int mod_init()
     struct utsname un;
     uname(&un);
 
-    snprintf(versionstr, sizeof(versionstr), "Mako v%.*s running on %s %s (%s)",
+    char compilerver[128] = "unknown compiler";
+
+#ifdef __clang__
+    snprintf(compilerver, sizeof(compilerver),
+            "clang v%d.%d.%d",
+            __clang_major__, __clang_minor__, __clang_patchlevel__);
+#elif defined(__GNUC__)
+    snprintf(compilerver, sizeof(compilerver),
+            "gcc v%d.%d.%d",
+            __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#endif
+
+    snprintf(versionstr, sizeof(versionstr),
+            "Mako v%.*s running on %s %s (%s), "
+            "compiled %s, %s using %s",
                 VERSION_IDX, PISTR,
-                un.sysname, un.release, un.machine);
+                un.sysname, un.release, un.machine,
+                __DATE__, __TIME__, compilerver);
 
     return 0;
 }
