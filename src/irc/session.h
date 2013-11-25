@@ -152,6 +152,13 @@ struct irc_session
     struct hashtable *channels;
     struct hashtable *capabilities;
 
+    /*
+     * A prefilled copy of the ISUPPORT CHANMODES modes, split up into groups,
+     * and the mode flags from PREFIX.
+     */
+    char chanmodes[4][IRC_PARAM_MAX];
+    char usermodes[IRC_CHANNEL_PREFIX_MAX];
+
     struct irc_callbacks cb;
 };
 
@@ -189,13 +196,16 @@ int sess_handle_data(struct irc_session *sess, struct timeval *timeout);
  * Logic
  */
 int sess_handle_message(struct irc_session *sess, struct irc_message *msg);
-int sess_handle_mode_change(
-        struct irc_session *sess,
-        const char *prefix,
-        const char *chan,
-        const char *modestr,
-        char args[][IRC_PARAM_MAX],
-        size_t argstart,
-        size_t argmax);
+int sess_handle_isupport(struct irc_session *sess,
+                         const char *sup,
+                         const char *val);
+
+int sess_handle_mode_change(struct irc_session *sess,
+                            const char *prefix,
+                            const char *chan,
+                            const char *modestr,
+                            char args[][IRC_PARAM_MAX],
+                            size_t argstart,
+                            size_t argmax);
 
 #endif /* defined SESSION_H */

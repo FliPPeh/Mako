@@ -156,7 +156,6 @@ int sess_main(struct irc_session *sess)
             break;
 
         sess->session_start = time(NULL);
-
         sess_login(sess);
 
         /* Inner loop, receive and handle data */
@@ -344,9 +343,13 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
             if (!(eq = strchr(msg->params[i], '='))) {
                 irc_capability_set(sess->capabilities, msg->params[i], NULL);
+
+                sess_handle_isupport(sess, msg->params[i], NULL);
             } else {
                 *eq = '\0';
                 irc_capability_set(sess->capabilities, msg->params[i], eq + 1);
+
+                sess_handle_isupport(sess, msg->params[i], eq + 1);
             }
         }
     } else if (!strcmp(msg->command, "332")) {
@@ -492,11 +495,8 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
             irc_channel_add(sess->channels, channel);
 
-            irc_mkmessage(&who, "WHO",
-                    (const char *[]){ channel }, 1, NULL);
-
-            irc_mkmessage(&mode, "MODE",
-                    (const char *[]){ channel }, 1, NULL);
+            irc_mkmessage(&who, "WHO",   (const char *[]){ channel }, 1, NULL);
+            irc_mkmessage(&mode, "MODE", (const char *[]){ channel }, 1, NULL);
 
             sess_sendmsg(sess, &who);
             sess_sendmsg(sess, &mode);
@@ -662,108 +662,128 @@ exit_err:
     return 1;
 }
 
+int sess_handle_isupport(struct irc_session *sess,
+                         const char *sup,
+                         const char *val)
+{
+    if (!strcmp(sup, "CHANMODES") && (val != NULL)) {
+        char *ptr = (char *)val;
+        char *nptr = NULL;
+
+        char restbuf[IRC_PARAM_MAX] = {0};
+        size_t i = 0;
+
+        do {
+            nptr = strpart(ptr, ',',
+                    sess->chanmodes[i], sizeof(sess->chanmodes[i]) - 1,
+                    restbuf,            sizeof(restbuf)            - 1);
+
+            if (!nptr)
+                strncpy(sess->chanmodes[i],
+                        restbuf,
+                        sizeof(sess->chanmodes[i]) - 1);
+            else
+                ptr = nptr;
+
+            log_debug("Set chanmodes[%lu]='%s'", i, sess->chanmodes[i]);
+            ++i;
+
+        } while (nptr != NULL);
+    } else if (!strcmp(sup, "PREFIX") && (val != NULL)) {
+        size_t i;
+        size_t len = strlen(val);
+
+        for (i = 0; (i < (len / 2) - 1) && (i < IRC_CHANNEL_PREFIX_MAX); ++i)
+            sess->usermodes[i] = val[i + 1];
+
+        log_debug("Set usermodes='%s'", sess->usermodes);
+    }
+
+    return 0;
+}
+
 /* TODO: Clean this sumbitch up */
-int sess_handle_mode_change(
-        struct irc_session *sess,
-        const char *prefix,
-        const char *chan,
-        const char *modestr,
-        char args[][IRC_PARAM_MAX],
-        size_t argstart,
-        size_t argmax)
+int sess_handle_mode_change(struct irc_session *sess,
+                            const char *prefix,
+                            const char *chan,
+                            const char *modestr,
+                            char args[][IRC_PARAM_MAX],
+                            size_t argstart,
+                            size_t argmax)
 {
     int set = 1; /* 1 = set, 0 = unset */
     size_t i = argstart;
-    size_t j = 0;
 
     struct irc_channel *t = NULL;
 
-    char usermodes[IRC_CHANNEL_PREFIX_MAX] = {0};
-    char chanmodes_cpy[IRC_PARAM_MAX] = {0};
-
     const char *oldmodes = modestr; /* backup for signal */
-
-    const char *prf = irc_capability_get(sess->capabilities, "PREFIX");
-    const char *chn = irc_capability_get(sess->capabilities, "CHANMODES");
-    const char *chanmodes[4] = {0};
-
-    char *sep = chanmodes_cpy;
-
-    if ((chn == NULL) || (prf == NULL)) {
-        log_warn("No CHANMODES or PREFIX in ISUPPORT, "
-                 "unable to determine modes!");
-        return 0;
-    }
-
-    strncpy(chanmodes_cpy, chn, sizeof(chanmodes_cpy) - 1);
-
-    chanmodes[0] = sep;
-
-    while ((sep = strchr(sep, ','))) {
-        chanmodes[++j] = sep + 1;
-        *sep++ = '\0';
-    }
-
-    for (j = 0; (j < strlen(prf) / 2 - 1) && (j < IRC_CHANNEL_PREFIX_MAX); ++j)
-        usermodes[j] = prf[j + 1];
 
     if (!(t = irc_channel_get(sess->channels, chan))) {
         log_warn("Unable to look up channel '%s'", chan);
-        return 0;
+        return 1;
     }
 
     while (*modestr) {
         const char *arg = NULL;
 
         if ((*modestr == '+') || (*modestr == '-'))
-            set = (*modestr++ == '+') ? 1 : 0;
+            set = (*modestr++ == '+');
 
-        if ((strchr(chanmodes[MODE_LIST],   *modestr)) ||
-            (strchr(chanmodes[MODE_REQARG], *modestr)) ||
-            ((strchr(chanmodes[MODE_SETARG], *modestr) && set))) {
+        if ((strchr(sess->chanmodes[MODE_LIST],   *modestr)) ||
+            (strchr(sess->chanmodes[MODE_REQARG], *modestr)) ||
+           ((strchr(sess->chanmodes[MODE_SETARG], *modestr) && set))) {
 
             if (i < argmax) {
                 arg = args[i++];
             } else {
                 log_error("too few mode parameters");
-                return 0;
+                return 1;
             }
 
+            log_debug("%s: set mode %c%c with arg '%s'",
+                    t->name, set ? '+' : '-', *modestr, arg);
+
             if (set) {
-                if (strchr(chanmodes[MODE_LIST], *modestr))
+                if (strchr(sess->chanmodes[MODE_LIST], *modestr))
                     /* Add list entry */
                     irc_channel_add_mode(t, *modestr, arg);
                 else
                     /* Set flag */
                     irc_channel_set_mode(t, *modestr, arg);
             } else {
-                if (strchr(chanmodes[MODE_LIST], *modestr))
+                if (strchr(sess->chanmodes[MODE_LIST], *modestr))
                     /* Delete list entry */
                     irc_channel_del_mode(t, *modestr, arg);
                 else
                     /* Unset flag */
                     irc_channel_unset_mode(t, *modestr);
             }
-        } else if (strchr(usermodes, *modestr)) {
+        } else if (strchr(sess->usermodes, *modestr)) {
             if (i < argmax) {
                 arg = args[i++];
             } else {
                 log_error("too few mode parameters");
-                return 0;
+                return 1;
             }
 
             struct irc_user *usr = irc_channel_get_user(t, arg);
 
-            if (!usr)
+            if (!usr) {
                 log_warn("unknown user '%s' for channel '%s'", arg, chan);
-            else
+            } else {
+                log_debug("%s: set mode %c%c for user '%s'",
+                        t->name, set ? '+' : '-', *modestr, usr->prefix);
+
                 if (set)
                     irc_channel_user_set_mode(usr, *modestr);
                 else
                     irc_channel_user_unset_mode(usr, *modestr);
+            }
 
         } else {
             /* Unknown flags or whensets when not set */
+            log_debug("%s: set mode %c%c", t->name, set ? '+' : '-', *modestr);
+
             if (set)
                 irc_channel_set_mode(t, *modestr, NULL);
             else
@@ -773,11 +793,11 @@ int sess_handle_mode_change(
         if (set) {
             if (sess->cb.on_mode_set)
                 sess->cb.on_mode_set(sess->cb.arg,
-                        prefix, chan, *modestr, arg);
+                    prefix, chan, *modestr, arg);
         } else {
             if (sess->cb.on_mode_unset)
                 sess->cb.on_mode_unset(sess->cb.arg,
-                        prefix, chan, *modestr, arg);
+                    prefix, chan, *modestr, arg);
         }
 
         modestr++;
