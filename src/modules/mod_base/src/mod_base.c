@@ -219,40 +219,7 @@ int base_handle_command(
 
         respond(BOTREF, target, user.nick,
                 "Running for %s, connected for %s", runtime, contime);
-    } else if (!strcmp(cmd, "whoami")) {
-        struct reguser *usr = NULL;
 
-        if ((usr = reguser_find(BOTREF, prefix)) != NULL) {
-            respond(BOTREF, target, user.nick,
-                    "I know you as '%s' with the flags '%s'",
-                        usr->name, reguser_flagstr(usr));
-        } else {
-            respond(BOTREF, target, user.nick, "Who are you indeed.");
-        }
-    } else if (!strcmp(cmd, "dumpusers")) {
-        struct hashtable_iterator iter;
-
-        void *channame;
-        void *channel;
-
-        hashtable_iterator_init(&iter, BOTREF->sess->channels);
-        while (hashtable_iterator_next(&iter, &channame, &channel)) {
-            log_info("Dumping userlist for channel '%s'...", channame);
-
-            struct hashtable_iterator iter2;
-
-            void *prefix;
-            void *user;
-
-            hashtable_iterator_init(&iter2,
-                    ((struct irc_channel *)channel)->users);
-            while (hashtable_iterator_next(&iter2, &prefix, &user)) {
-                log_info("'%s' => '%s'",
-                        prefix, ((struct irc_user *)user)->modes);
-            }
-
-            log_info("");
-        }
     } else if (!strcmp(cmd, "flipcoin")) {
         srand(time(NULL));
         enum coinflip_result res = flip_coin();
@@ -276,56 +243,6 @@ int base_handle_command(
                 total, (double)flip_results[HEADS] / total,
                        (double)flip_results[TAILS] / total,
                        (double)flip_results[SIDE] / total);
-
-    } else if (!strcmp(cmd, "chanmodes")) {
-        struct irc_channel *chan = irc_channel_get(BOTREF->sess, args);
-        if (chan) {
-            struct hashtable_iterator iter;
-            void *k = NULL;
-            void *v = NULL;
-
-            struct json_value *jv = json_object_new();
-
-            hashtable_iterator_init(&iter, chan->modes);
-            while (hashtable_iterator_next(&iter, &k, &v)) {
-                struct irc_mode *m = v;
-                log_info("Mode: %c", m->mode);
-
-                if (m->type == IRC_MODE_SIMPLE) {
-                    hashtable_insert(json_get_object(jv),
-                            dstrinit(*((char *)k), 1), json_null_new());
-
-                } else if (m->type == IRC_MODE_SINGLE) {
-                    hashtable_insert(json_get_object(jv),
-                            dstrinit(*((char *)k), 1),
-                            json_string_new(m->value.arg));
-
-                } else if (m->type == IRC_MODE_LIST) {
-                    struct list *ptr = m->value.args;
-                    struct json_value *lst = json_array_new();
-
-                    log_info("Adding %lu args...", list_length(m->value.args));
-
-                    for (ptr = m->value.args; ptr != NULL; ptr = ptr->next) {
-                        lst->value.jarray = list_append(json_get_array(lst),
-                                json_string_new(list_data(ptr, const char *)));
-                    }
-
-                    hashtable_insert(json_get_object(jv),
-                            dstrinit(*((char *)k), 1),
-                            lst);
-                }
-            }
-
-            char buf[512] = {0};
-            json_dump(buf, sizeof(buf), jv);
-
-            respond(BOTREF, target, user.nick, "%s", buf);
-
-            json_free(jv);
-        } else {
-            respond(BOTREF, target, user.nick, "I don't even know :(");
-        }
     }
 
     return 0;
