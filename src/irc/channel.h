@@ -93,12 +93,6 @@ int irc_channel_user_set_mode(struct irc_user *u, char mode);
 int irc_channel_user_unset_mode(struct irc_user *u, char mode);
 
 /* Utility functions */
-int _irc_channel_find_by_name(const void *list, const void *search, void *ud);
-int _irc_channel_user_find_by_prefix(
-        const void *list, const void *search, void *ud);
-
-int _irc_mode_find_by_flag(const void *list, const void *data, void *ud);
-
 struct irc_user *_irc_user_new(const char *pref, struct irc_channel *c);
 struct irc_channel *_irc_channel_new(const char *name, struct irc_session *s);
 struct irc_mode *_irc_mode_new(char mode, enum irc_mode_type type);

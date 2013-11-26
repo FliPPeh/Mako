@@ -278,23 +278,6 @@ int irc_channel_user_unset_mode(struct irc_user *u, char mode)
 }
 
 /* Utility functions */
-int _irc_channel_find_by_name(const void *list, const void *search, void *ud)
-{
-    return strcasecmp(((struct irc_channel *)list)->name, search);
-}
-
-int _irc_channel_user_find_by_prefix(
-        const void *list, const void *search, void *ud)
-{
-    return irc_user_cmp(((struct irc_user *)list)->prefix, search);
-}
-
-int _irc_mode_find_by_flag(const void *list, const void *data, void *ud)
-{
-    return ((struct irc_mode *)list)->mode != *((char *)data);
-}
-
-
 struct irc_user *_irc_user_new(const char *pref, struct irc_channel *c)
 {
     struct irc_user *usr = malloc(sizeof(*usr));
