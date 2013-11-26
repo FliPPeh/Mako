@@ -90,3 +90,11 @@ char *strdup(const char *s)
     memcpy(d, s, strlen(s) + 1);
     return d;
 }
+
+char *chrdup(char c)
+{
+    char *d = malloc(sizeof(d));
+    *d = c;
+
+    return d;
+}

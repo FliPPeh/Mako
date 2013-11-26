@@ -1,3 +1,4 @@
+#include "irc/session.h"
 #include "irc/channel.h"
 #include "util/log.h"
 #include "util/util.h"
@@ -13,29 +14,40 @@ void irc_channel_free(void *data)
     struct irc_channel *channel = (struct irc_channel *)data;
 
     hashtable_free(channel->users);
-    list_free_all(channel->modes, &list_free_wrapper, NULL);
+    hashtable_free(channel->modes);
 
     free(channel);
 }
 
+void irc_mode_free(void *data)
+{
+    struct irc_mode *mode = (struct irc_mode *)data;
+
+    if (mode->type == IRC_MODE_LIST)
+        list_free_all(mode->value.args, list_free_wrapper, NULL);
+
+    free(mode);
+}
+
 /* Channel management */
-int irc_channel_add(struct hashtable *chans, const char *chan)
+int irc_channel_add(struct irc_session *sess, const char *chan)
 {
-    hashtable_insert(chans, strdup(chan), _irc_channel_new(chan));
+    hashtable_insert(sess->channels,
+            strdup(chan), _irc_channel_new(chan, sess));
 
     return 0;
 }
 
-int irc_channel_del(struct hashtable *chans, struct irc_channel *chan)
+int irc_channel_del(struct irc_session *sess, struct irc_channel *chan)
 {
-    hashtable_remove(chans, chan->name);
+    hashtable_remove(sess->channels, chan->name);
 
     return 0;
 }
 
-struct irc_channel *irc_channel_get(struct hashtable *chans, const char *chan)
+struct irc_channel *irc_channel_get(struct irc_session *sess, const char *chan)
 {
-    return hashtable_lookup(chans, chan);
+    return hashtable_lookup(sess->channels, chan);
 }
 
 int irc_channel_set_topic(struct irc_channel *chan, const char *topic)
@@ -65,7 +77,7 @@ int irc_channel_set_topic_meta(
 /* Channel user management */
 int irc_channel_add_user(struct irc_channel *chan, const char *prefix)
 {
-    hashtable_insert(chan->users, strdup(prefix), _irc_user_new(prefix));
+    hashtable_insert(chan->users, strdup(prefix), _irc_user_new(prefix, chan));
 
     return 0;
 }
@@ -106,7 +118,7 @@ struct irc_user *irc_channel_get_user_by_nick(
 int irc_channel_rename_user(
         struct irc_channel *chan, struct irc_user *user, const char *pref)
 {
-    struct irc_user *newuser = _irc_user_new(pref);
+    struct irc_user *newuser = _irc_user_new(pref, chan);
 
     /* Copy modes from old to new */
     strncpy(newuser->modes, user->modes, sizeof(newuser->modes) - 1);
@@ -121,73 +133,110 @@ int irc_channel_rename_user(
 /*
  * Modes
  */
-
-/* Mode lists (+b, +e, ...) */
-int irc_channel_add_mode(struct irc_channel *c, char mode, const char *arg)
-{
-    c->modes = list_append(c->modes, _irc_mode_new(mode, arg));
-
-    return 0;
-}
-
-int irc_channel_del_mode(struct irc_channel *c, char mode, const char *arg)
-{
-    struct list *pos = NULL;
-
-again:
-    LIST_FOREACH(c->modes, pos) {
-        /* If arg != NULL, delete mode with that arg, otherwise remove all
-         * modes with that flag */
-        struct irc_mode *ptr = pos->data;
-
-        if ((ptr->mode == mode) && (!arg || !strcasecmp(ptr->arg, arg))) {
-            c->modes = list_remove_link(c->modes, pos, list_free_wrapper, NULL);
-            goto again;
-        }
-    }
-
-    return 0;
-}
-
-/* Single flags with or without arguments */
 int irc_channel_set_mode(struct irc_channel *c, char mode, const char *arg)
 {
-    struct list *pos = NULL;
-    struct irc_mode *m = NULL;
+    enum irc_mode_type type = _irc_channel_mode_type(c->session, mode);
+    if (type != IRC_MODE_CHANUSER) {
+        struct irc_mode *m = hashtable_lookup(c->modes, &mode);
 
-    /* Try to find mode in list first */
-    if ((pos = list_find_custom(
-                    c->modes, &mode, _irc_mode_find_by_flag, NULL))) {
-        m = list_data(pos, struct irc_mode *);
+        if (m == NULL) {
+            m = _irc_mode_new(mode, type);
+            hashtable_insert(c->modes, chrdup(mode), m);
+        }
 
-        /* update */
-        m->mode = mode;
-
-        if (arg)
-            strncpy(m->arg, arg, sizeof(m->arg) - 1);
-        else
-            memset(m->arg, 0, sizeof(m->arg));
+        if (type == IRC_MODE_LIST) {
+            /* Add to list or create list */
+            m->value.args = list_append(m->value.args, strdup(arg));
+        } else if (type == IRC_MODE_SINGLE) {
+            /* Replace or place */
+            strncpy(m->value.arg, arg, sizeof(m->value.arg) - 1);
+        }
     } else {
-        c->modes = list_append(c->modes, _irc_mode_new(mode, arg));
+        /* Find channel user and apply mode to them */
+        struct irc_user *usr = irc_channel_get_user(c, arg);
+
+        if (!usr) {
+            log_warn("%s: unknown user '%s'", c->name, arg);
+            return 1;
+        }
+
+        log_debug("%s: set user mode +%c for '%s'", c->name, mode, usr->prefix);
+        irc_channel_user_set_mode(usr, mode);
     }
 
     return 0;
 }
 
-int irc_channel_unset_mode(struct irc_channel *c, char mode)
+int irc_channel_unset_mode(struct irc_channel *c, char mode, const char *arg)
 {
-    struct list *pos = NULL;
+    enum irc_mode_type type = _irc_channel_mode_type(c->session, mode);
 
-    if ((pos = list_find_custom(
-                    c->modes, &mode, _irc_mode_find_by_flag, NULL)))
-        c->modes = list_remove_link(c->modes, pos, list_free_wrapper, NULL);
+    if (type != IRC_MODE_CHANUSER) {
+        struct irc_mode *m = hashtable_lookup(c->modes, &mode);
+
+        if (m == NULL) {
+            /* Mode not set, can not unset */
+            log_warn("%s: mode +%c not set, can not unset!", c->name, mode);
+            return 1;
+        }
+
+        if (type == IRC_MODE_LIST) {
+            /* Try to locate mode in list */
+            struct list *pos = NULL;
+
+            if ((pos = list_find_custom(
+                         m->value.args, arg, _irc_channel_mode_strcmp, NULL)))
+                m->value.args = list_remove_link(m->value.args, pos,
+                        list_free_wrapper, NULL);
+
+            if (!list_length(m->value.args))
+                hashtable_remove(c->modes, &mode);
+
+        } else {
+            /* Remove the whole thing */
+            hashtable_remove(c->modes, &mode);
+        }
+
+    } else {
+        /* Find channel user and apply mode to them */
+        struct irc_user *usr = irc_channel_get_user(c, arg);
+
+        if (!usr) {
+            log_warn("%s: unknown user '%s'", c->name, arg);
+            return 1;
+        }
+
+        log_debug("%s: set user mode +%c for '%s'", c->name, mode, usr->prefix);
+        irc_channel_user_unset_mode(usr, mode);
+    }
 
     return 0;
+
+}
+
+enum irc_mode_type _irc_channel_mode_type(struct irc_session *sess, char mode)
+{
+    if (strchr(sess->chanmodes[MODE_LIST], mode))
+        return IRC_MODE_LIST;
+    else if (strchr(sess->chanmodes[MODE_REQARG], mode)
+          || strchr(sess->chanmodes[MODE_SETARG], mode))
+        return IRC_MODE_SINGLE;
+    else if (strchr(sess->usermodes, mode))
+        return IRC_MODE_CHANUSER;
+    else
+        return IRC_MODE_SIMPLE;
+}
+
+int _irc_channel_mode_strcmp(const void *list, const void *search, void *ud)
+{
+    (void)ud;
+
+    return strcmp(list, search);
 }
 
 int irc_channel_user_set_mode(struct irc_user *u, char mode)
 {
-    if (!strchr(u->modes, mode) && strlen(u->modes) < IRC_FLAGS_MAX - 1)
+    if (!strchr(u->modes, mode) && (strlen(u->modes) < IRC_FLAGS_MAX - 1))
         u->modes[strlen(u->modes)] = mode;
 
     return 0;
@@ -224,17 +273,18 @@ int _irc_mode_find_by_flag(const void *list, const void *data, void *ud)
 }
 
 
-struct irc_user *_irc_user_new(const char *pref)
+struct irc_user *_irc_user_new(const char *pref, struct irc_channel *c)
 {
     struct irc_user *usr = malloc(sizeof(*usr));
 
     memset(usr, 0, sizeof(*usr));
     strncpy(usr->prefix, pref, sizeof(usr->prefix) - 1);
+    usr->channel = c;
 
     return usr;
 }
 
-struct irc_channel *_irc_channel_new(const char *name)
+struct irc_channel *_irc_channel_new(const char *name, struct irc_session *s)
 {
     struct irc_channel *chn = malloc(sizeof(*chn));
 
@@ -242,18 +292,20 @@ struct irc_channel *_irc_channel_new(const char *name)
     strncpy(chn->name, name, sizeof(chn->name) - 1);
 
     chn->users = hashtable_new_with_free(ascii_hash, ascii_equal, free, free);
+    chn->modes = hashtable_new_with_free(char_hash, char_equal,
+                                         free,      irc_mode_free);
+    chn->session = s;
 
     return chn;
 }
 
-struct irc_mode *_irc_mode_new(char mode, const char *arg)
+struct irc_mode *_irc_mode_new(char mode, enum irc_mode_type type)
 {
-    struct irc_mode *mod  = malloc(sizeof(*mod));
+    struct irc_mode *mde = malloc(sizeof(*mde));
 
-    memset(mod, 0, sizeof(*mod));
+    memset(mde, 0, sizeof(*mde));
+    mde->mode = mode;
+    mde->type = type;
 
-    mod->mode = mode;
-    strncpy(mod->arg, arg ? arg : "", sizeof(mod->arg) - 1);
-
-    return mod;
+    return mde;
 }

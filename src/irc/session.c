@@ -361,7 +361,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             goto exit_err;
         }
 
-        if (!(target = irc_channel_get(sess->channels, msg->params[1]))) {
+        if (!(target = irc_channel_get(sess, msg->params[1]))) {
             log_warn("Unable to look up channel '%s'", msg->params[1]);
             goto exit_err;
         }
@@ -378,7 +378,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             goto exit_err;
         }
 
-        if (!(target = irc_channel_get(sess->channels, msg->params[1]))) {
+        if (!(target = irc_channel_get(sess, msg->params[1]))) {
             log_warn("Unable to look up channel '%s'", msg->params[1]);
 
             goto exit_err;
@@ -411,7 +411,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             goto exit_err;
         }
 
-        if (!(target = irc_channel_get(sess->channels, msg->params[1]))) {
+        if (!(target = irc_channel_get(sess, msg->params[1]))) {
             log_warn("Unable to look up channel '%s'", msg->params[1]);
 
             goto exit_err;
@@ -438,7 +438,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             goto exit_err;
         }
 
-        if (!(channel = irc_channel_get(sess->channels, msg->params[1]))) {
+        if (!(channel = irc_channel_get(sess, msg->params[1]))) {
             log_warn("Unable to look up channel '%s'", msg->params[1]);
 
             goto exit_err;
@@ -474,6 +474,15 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
     } else if (!strcmp(msg->command, "376")) {
         /* MOTD_END */
 
+        /* DEBUG */
+        struct irc_message join;
+
+        irc_mkmessage(&join, "JOIN", (const char*[]){ "#techbot" }, 1, NULL);
+        sess_sendmsg(sess, &join);
+
+        irc_mkmessage(&join, "JOIN", (const char*[]){ "#mako" }, 1, NULL);
+        sess_sendmsg(sess, &join);
+
     } else if (!strcmp(msg->command, "PRIVMSG")) {
         if (sess->cb.on_privmsg)
             sess->cb.on_privmsg(sess->cb.arg,
@@ -493,7 +502,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 ? msg->params[0]
                 : msg->msg;
 
-            irc_channel_add(sess->channels, channel);
+            irc_channel_add(sess, channel);
 
             irc_mkmessage(&who, "WHO",   (const char *[]){ channel }, 1, NULL);
             irc_mkmessage(&mode, "MODE", (const char *[]){ channel }, 1, NULL);
@@ -502,7 +511,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             sess_sendmsg(sess, &mode);
         } else {
             irc_channel_add_user(
-                    irc_channel_get(sess->channels, msg->params[0]),
+                    irc_channel_get(sess, msg->params[0]),
                     msg->prefix);
         }
 
@@ -516,14 +525,14 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             sess->cb.on_part(sess->cb.arg,
                 msg->prefix, msg->params[0], msg->msg);
 
-        if (!(target = irc_channel_get(sess->channels, msg->params[0]))) {
+        if (!(target = irc_channel_get(sess, msg->params[0]))) {
             log_warn("Unable to look up channel '%s'", msg->params[0]);
 
             goto exit_err;
         }
 
         if (!irc_user_cmp(msg->prefix, sess->nick)) {
-            irc_channel_del(sess->channels, target);
+            irc_channel_del(sess, target);
         } else {
             struct irc_user *usr = irc_channel_get_user(target, msg->prefix);
 
@@ -541,7 +550,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             sess->cb.on_kick(sess->cb.arg,
                     msg->prefix, utarget->prefix, msg->params[0], msg->msg);
 
-        if (!(target =  irc_channel_get(sess->channels, msg->params[0]))) {
+        if (!(target =  irc_channel_get(sess, msg->params[0]))) {
             log_warn("Unable to look up channel '%s'", msg->params[0]);
 
             goto exit_err;
@@ -554,7 +563,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
         }
 
         if (!irc_user_cmp(msg->params[1], sess->nick))
-            irc_channel_del(sess->channels, target);
+            irc_channel_del(sess, target);
         else
             irc_channel_del_user(target, utarget);
 
@@ -718,7 +727,7 @@ int sess_handle_mode_change(struct irc_session *sess,
 
     const char *oldmodes = modestr; /* backup for signal */
 
-    if (!(t = irc_channel_get(sess->channels, chan))) {
+    if (!(t = irc_channel_get(sess, chan))) {
         log_warn("Unable to look up channel '%s'", chan);
         return 1;
     }
@@ -731,70 +740,34 @@ int sess_handle_mode_change(struct irc_session *sess,
 
         if ((strchr(sess->chanmodes[MODE_LIST],   *modestr)) ||
             (strchr(sess->chanmodes[MODE_REQARG], *modestr)) ||
-           ((strchr(sess->chanmodes[MODE_SETARG], *modestr) && set))) {
+           ((strchr(sess->chanmodes[MODE_SETARG], *modestr) && set)) ||
+            (strchr(sess->usermodes,              *modestr))) {
 
             if (i < argmax) {
                 arg = args[i++];
-            } else {
-                log_error("too few mode parameters");
-                return 1;
-            }
 
-            log_debug("%s: set mode %c%c with arg '%s'",
+                log_debug("%s: set mode %c%c with arg '%s'",
                     t->name, set ? '+' : '-', *modestr, arg);
-
-            if (set) {
-                if (strchr(sess->chanmodes[MODE_LIST], *modestr))
-                    /* Add list entry */
-                    irc_channel_add_mode(t, *modestr, arg);
-                else
-                    /* Set flag */
-                    irc_channel_set_mode(t, *modestr, arg);
-            } else {
-                if (strchr(sess->chanmodes[MODE_LIST], *modestr))
-                    /* Delete list entry */
-                    irc_channel_del_mode(t, *modestr, arg);
-                else
-                    /* Unset flag */
-                    irc_channel_unset_mode(t, *modestr);
-            }
-        } else if (strchr(sess->usermodes, *modestr)) {
-            if (i < argmax) {
-                arg = args[i++];
             } else {
                 log_error("too few mode parameters");
                 return 1;
             }
-
-            struct irc_user *usr = irc_channel_get_user(t, arg);
-
-            if (!usr) {
-                log_warn("unknown user '%s' for channel '%s'", arg, chan);
-            } else {
-                log_debug("%s: set mode %c%c for user '%s'",
-                        t->name, set ? '+' : '-', *modestr, usr->prefix);
-
-                if (set)
-                    irc_channel_user_set_mode(usr, *modestr);
-                else
-                    irc_channel_user_unset_mode(usr, *modestr);
-            }
-
         } else {
-            /* Unknown flags or whensets when not set */
-            log_debug("%s: set mode %c%c", t->name, set ? '+' : '-', *modestr);
+            /* Unknown flags, noarg flags or whensets when not set */
+            arg = NULL;
 
-            if (set)
-                irc_channel_set_mode(t, *modestr, NULL);
-            else
-                irc_channel_unset_mode(t, *modestr);
+            log_debug("%s: set mode %c%c", t->name, set ? '+' : '-', *modestr);
         }
 
         if (set) {
+            irc_channel_set_mode(t, *modestr, arg);
+
             if (sess->cb.on_mode_set)
                 sess->cb.on_mode_set(sess->cb.arg,
                     prefix, chan, *modestr, arg);
         } else {
+            irc_channel_unset_mode(t, *modestr, arg);
+
             if (sess->cb.on_mode_unset)
                 sess->cb.on_mode_unset(sess->cb.arg,
                     prefix, chan, *modestr, arg);

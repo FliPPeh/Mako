@@ -5,21 +5,39 @@
 
 #include <libutil/container/hashtable.h>
 
+enum irc_mode_type
+{
+    IRC_MODE_SIMPLE,  /* +c, +t, ... => argument        */
+    IRC_MODE_SINGLE,  /* +k, +l, ... => arg1, arg2, ... */
+    IRC_MODE_LIST,    /* +b, ...     => no argument     */
+    IRC_MODE_CHANUSER /* +o, +v, ... => nick argument   */
+};
 
 struct irc_mode
 {
     char mode;
-    char arg[IRC_PARAM_MAX];
+
+    enum irc_mode_type type;
+
+    union irc_mode_argument
+    {
+        char arg[IRC_PARAM_MAX];
+        struct list *args;
+    } value;
 };
 
 struct irc_user
 {
+    struct irc_channel *channel;
+
     char prefix[IRC_PREFIX_MAX];
     char modes[IRC_FLAGS_MAX];
 };
 
 struct irc_channel
 {
+    struct irc_session *session;
+
     char name[IRC_CHANNEL_MAX];
     time_t created;
 
@@ -28,16 +46,17 @@ struct irc_channel
     time_t topic_set;
 
     struct hashtable *users;
-    struct list *modes;
+    struct hashtable *modes;
 };
 
-/* List management */
+/* Hashtable management */
 void irc_channel_free(void *data);
+void irc_mode_free(void *data);
 
 /* Channel management */
-int irc_channel_add(struct hashtable *chans, const char *chan);
-int irc_channel_del(struct hashtable *chans, struct irc_channel *chan);
-struct irc_channel *irc_channel_get(struct hashtable *chans, const char *chan);
+int irc_channel_add(struct irc_session *sess, const char *chan);
+int irc_channel_del(struct irc_session *sess, struct irc_channel *chan);
+struct irc_channel *irc_channel_get(struct irc_session *sess, const char *chan);
 
 int irc_channel_set_created(struct irc_channel *chan, time_t created);
 int irc_channel_set_topic(struct irc_channel *chan, const char *topic);
@@ -58,13 +77,12 @@ int irc_channel_rename_user(
  * Modes
  */
 
-/* Mode lists (+b, +e, ...) */
-int irc_channel_add_mode(struct irc_channel *c, char mode, const char *arg);
-int irc_channel_del_mode(struct irc_channel *c, char mode, const char *arg);
-
-/* Single flags with or without arguments */
+/* Channel flags with or without arguments */
 int irc_channel_set_mode(struct irc_channel *c, char mode, const char *arg);
-int irc_channel_unset_mode(struct irc_channel *c, char mode);
+int irc_channel_unset_mode(struct irc_channel *c, char mode, const char *arg);
+
+enum irc_mode_type _irc_channel_mode_type(struct irc_session *sess, char mode);
+int _irc_channel_mode_strcmp(const void *list, const void *search, void *ud);
 
 /* User flags */
 int irc_channel_user_set_mode(struct irc_user *u, char mode);
@@ -77,8 +95,8 @@ int _irc_channel_user_find_by_prefix(
 
 int _irc_mode_find_by_flag(const void *list, const void *data, void *ud);
 
-struct irc_user *_irc_user_new(const char *pref);
-struct irc_channel *_irc_channel_new(const char *name);
-struct irc_mode *_irc_mode_new(char mode, const char *arg);
+struct irc_user *_irc_user_new(const char *pref, struct irc_channel *c);
+struct irc_channel *_irc_channel_new(const char *name, struct irc_session *s);
+struct irc_mode *_irc_mode_new(char mode, enum irc_mode_type type);
 
 #endif /* defined IRC_CHANNEL_H */

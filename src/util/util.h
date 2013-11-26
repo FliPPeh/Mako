@@ -35,6 +35,7 @@ char *strpart(const char *src, char sep,
 int regex_match(const char *regex, const char *str);
 
 char *strdup(const char *s);
+char *chrdup(char c);
 
 #ifdef DEBUG
 #   define ASSERT(cond, lev, action)                                    \

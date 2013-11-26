@@ -25,7 +25,7 @@
 
 #include "irc/channel.h"
 
-enum irc_mode_type
+enum irc_mode_style
 {
     MODE_LIST,
     MODE_REQARG,

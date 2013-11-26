@@ -275,6 +275,28 @@ int base_handle_command(
                        (double)flip_results[TAILS] / total,
                        (double)flip_results[SIDE] / total);
 
+    } else if (!strcmp(cmd, "chanmodes")) {
+        /*
+        struct hashtable_iterator iter;
+        void *k = NULL;
+        void *v = NULL;
+
+        struct irc_channel *chan = irc_channel_get(BOTREF->sess, args);
+        if (chan) {
+            hashtable_iterator_init(&iter, chan->modes);
+            while (hashtable_iterator_next(&iter, &k, &v)) {
+                struct irc_mode *m = v;
+
+                if (m->type == IRC_MODE_SIMPLE)
+                    respond(BOTREF, target, user.nick, "%c!", m->mode);
+                else if (m->type == IRC_MODE_SINGLE)
+                    respond(BOTREF, target, user.nick, "%c = %s!",
+                            m->mode, m->value.arg);
+
+            }
+        } else {
+            respond(BOTREF, target, user.nick, "I don't even know :(");
+        } */
     }
 
     return 0;
