@@ -491,15 +491,6 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
     } else if (!strcmp(msg->command, "376")) {
         /* MOTD_END */
 
-        /* DEBUG */
-        struct irc_message join;
-
-        irc_mkmessage(&join, "JOIN", (const char*[]){ "#techbot" }, 1, NULL);
-        sess_sendmsg(sess, &join);
-
-        irc_mkmessage(&join, "JOIN", (const char*[]){ "#mako" }, 1, NULL);
-        sess_sendmsg(sess, &join);
-
     } else if (!strcmp(msg->command, "PRIVMSG")) {
         if (sess->cb.on_privmsg)
             sess->cb.on_privmsg(sess->cb.arg,
