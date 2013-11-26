@@ -274,6 +274,7 @@ int sess_handle_data(struct irc_session *sess, struct timeval *timeout)
     int nfds = select(sess->fd + 1, &reads, NULL, NULL, timeout);
 
     if ((nfds > 0) && (FD_ISSET(sess->fd, &reads))) {
+        struct irc_message msg;
         char line[IRC_MESSAGE_MAX] = {0};
 
         ssize_t data = socket_recv(
@@ -297,8 +298,6 @@ int sess_handle_data(struct irc_session *sess, struct timeval *timeout)
          * While the last blob of data received contains a full line,
          * process it
          */
-        struct irc_message msg;
-
         while (!sess_getln(sess, line, sizeof(line)))
             if (!irc_parse_message(line, &msg))
                 sess_handle_message(sess, &msg);
