@@ -184,10 +184,11 @@ int irc_channel_unset_mode(struct irc_channel *c, char mode, const char *arg)
             /* Try to locate mode in list */
             struct list *pos = NULL;
 
-            if ((pos = list_find_custom(
-                         m->value.args, arg, _irc_channel_mode_strcmp, NULL)))
+            if ((pos = list_find_custom(m->value.args, arg,
+                                        _irc_channel_mode_strcmp, NULL)))
+
                 m->value.args = list_remove_link(m->value.args, pos,
-                        list_free_wrapper, NULL);
+                                                 list_free_wrapper, NULL);
 
             if (!list_length(m->value.args))
                 hashtable_remove(c->modes, &mode);
