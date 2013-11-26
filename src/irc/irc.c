@@ -92,18 +92,14 @@ unsigned irc_message_to_string(const struct irc_message *i,
                                char *dest,
                                size_t n)
 {
-    strncat(dest, i->command, n - 1);
+    int pos = 0;
+    pos += snprintf(dest + pos, MAX(n - pos, 0), "%s", i->command);
 
-    /* TODO: Fix the possible overflows */
-    for (int j = 0; j < i->paramcount; ++j) {
-        strncat(dest, " ", n - 1);
-        strncat(dest, i->params[j], n - 1);
-    }
+    for (int j = 0; j < i->paramcount; ++j)
+        pos += snprintf(dest + pos, MAX(n - pos, 0), " %s", i->params[j]);
 
-    if (strlen(i->msg) > 0) {
-        strncat(dest, " :", n - 1);
-        strncat(dest, i->msg, n - 1);
-    }
+    if (strlen(i->msg) > 0)
+        pos += snprintf(dest + pos, MAX(n - pos, 0), " :%s", i->msg);
 
     return strlen(dest);
 }
