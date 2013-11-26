@@ -75,4 +75,12 @@ int irc_is_channel(const char *arg);
  */
 const char *irc_proper_target(const char *orig_target, const char *opt_user);
 
+/*
+ * Perform a case insensitive wildcard comparation with a pattern using the
+ * common '*' and '?' wildcards. Returns 0 on success, and nonzero on a mis-
+ * match. Mostly used for matching prefix masks against prefixes.
+ */
+int irc_strwcmp(const char *str, const char *pattern);
+
+
 #endif /* defined IRC_UTIL_H */

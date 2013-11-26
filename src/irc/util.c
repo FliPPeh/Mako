@@ -174,3 +174,25 @@ const char *irc_proper_target(const char *orig_target, const char *opt_user)
         ? orig_target
         : opt_user);
 }
+
+int irc_strwcmp(const char *str, const char *pat)
+{
+    while (*pat) {
+        if (*pat == '?') {
+            if (!*str)
+                return 1;
+
+            ++str;
+            ++pat;
+        } else if (*pat == '*') {
+            return !((!irc_strwcmp(str, pat+1))
+                    || (*str && !irc_strwcmp(str+1, pat)));
+        } else {
+            if (((*str++) | (1 << 5)) != ((*pat++) | (1 << 5)))
+                return 1;
+        }
+    }
+
+    return !(!*str && !*pat);
+}
+

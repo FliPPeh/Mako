@@ -1,5 +1,7 @@
 #include "irc/session.h"
 #include "irc/channel.h"
+#include "irc/util.h"
+
 #include "util/log.h"
 #include "util/util.h"
 
@@ -91,15 +93,19 @@ int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user)
 
 struct irc_user *irc_channel_get_user(struct irc_channel *chn, const char *usr)
 {
-    /* No '!' probably means no prefix, so we'll have to search */
     if (!strchr(usr, '!'))
+        /* No '!', probably means not a full prefix => search by nickname */
         return irc_channel_get_user_by_nick(chn, usr);
+    else if (strchr(usr, '!') && (strchr(usr, '*') || strchr(usr, '?')))
+        /* '!' found, but also '*' and/or '?' => mask, search! */
+        return irc_channel_get_user_by_mask(chn, usr);
     else
+        /* Simple lookup */
         return hashtable_lookup(chn->users, usr);
 }
 
-struct irc_user *irc_channel_get_user_by_nick(
-        struct irc_channel *chan, const char *nick)
+struct irc_user *irc_channel_get_user_by_nick(struct irc_channel *chan,
+                                              const char *nick)
 {
     struct hashtable_iterator iter;
 
@@ -114,6 +120,21 @@ struct irc_user *irc_channel_get_user_by_nick(
     return NULL;
 }
 
+struct irc_user *irc_channel_get_user_by_mask(struct irc_channel *chan,
+                                              const char *mask)
+{
+    struct hashtable_iterator iter;
+
+    void *prefix;
+    void *user;
+
+    hashtable_iterator_init(&iter, chan->users);
+    while (hashtable_iterator_next(&iter, &prefix, &user))
+        if (!irc_strwcmp(prefix, mask))
+            return user;
+
+    return NULL;
+}
 
 int irc_channel_rename_user(
         struct irc_channel *chan, struct irc_user *user, const char *pref)

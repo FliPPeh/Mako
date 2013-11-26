@@ -67,8 +67,12 @@ int irc_channel_set_topic_meta(
 int irc_channel_add_user(struct irc_channel *chan, const char *prefix);
 int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user);
 struct irc_user *irc_channel_get_user(struct irc_channel *chn, const char *usr);
-struct irc_user *irc_channel_get_user_by_nick(
-        struct irc_channel *chan, const char *nick);
+
+struct irc_user *irc_channel_get_user_by_nick(struct irc_channel *chan,
+                                              const char *nick);
+
+struct irc_user *irc_channel_get_user_by_mask(struct irc_channel *chan,
+                                              const char *mask);
 
 int irc_channel_rename_user(
         struct irc_channel *chan, struct irc_user *user, const char *pref);
