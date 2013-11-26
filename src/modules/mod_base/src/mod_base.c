@@ -8,6 +8,8 @@
 
 #include "util/log.h"
 
+#include <libutil/dstring.h>
+#include <libutil/json.h>
 #include <libutil/container/hashtable.h>
 
 #include <sys/utsname.h>
@@ -22,7 +24,7 @@
 #define PISTR "3.14159265358979323846264338327950288419716939937510582097494"
 
 // How many digits to use for version string. 2 ("3.") + 4 => 3.1415
-#define VERSION_IDX (2 + 8)
+#define VERSION_IDX (2 + 9)
 
 // Yes!
 const char *reks[] = {
@@ -276,27 +278,54 @@ int base_handle_command(
                        (double)flip_results[SIDE] / total);
 
     } else if (!strcmp(cmd, "chanmodes")) {
-        /*
-        struct hashtable_iterator iter;
-        void *k = NULL;
-        void *v = NULL;
-
         struct irc_channel *chan = irc_channel_get(BOTREF->sess, args);
         if (chan) {
+            struct hashtable_iterator iter;
+            void *k = NULL;
+            void *v = NULL;
+
+            struct json_value *jv = json_object_new();
+
             hashtable_iterator_init(&iter, chan->modes);
             while (hashtable_iterator_next(&iter, &k, &v)) {
                 struct irc_mode *m = v;
+                log_info("Mode: %c", m->mode);
 
-                if (m->type == IRC_MODE_SIMPLE)
-                    respond(BOTREF, target, user.nick, "%c!", m->mode);
-                else if (m->type == IRC_MODE_SINGLE)
-                    respond(BOTREF, target, user.nick, "%c = %s!",
-                            m->mode, m->value.arg);
+                if (m->type == IRC_MODE_SIMPLE) {
+                    hashtable_insert(json_get_object(jv),
+                            dstrinit(*((char *)k), 1), json_null_new());
 
+                } else if (m->type == IRC_MODE_SINGLE) {
+                    hashtable_insert(json_get_object(jv),
+                            dstrinit(*((char *)k), 1),
+                            json_string_new(m->value.arg));
+
+                } else if (m->type == IRC_MODE_LIST) {
+                    struct list *ptr = m->value.args;
+                    struct json_value *lst = json_array_new();
+
+                    log_info("Adding %lu args...", list_length(m->value.args));
+
+                    for (ptr = m->value.args; ptr != NULL; ptr = ptr->next) {
+                        lst->value.jarray = list_append(json_get_array(lst),
+                                json_string_new(list_data(ptr, const char *)));
+                    }
+
+                    hashtable_insert(json_get_object(jv),
+                            dstrinit(*((char *)k), 1),
+                            lst);
+                }
             }
+
+            char buf[512] = {0};
+            json_dump(buf, sizeof(buf), jv);
+
+            respond(BOTREF, target, user.nick, "%s", buf);
+
+            json_free(jv);
         } else {
             respond(BOTREF, target, user.nick, "I don't even know :(");
-        } */
+        }
     }
 
     return 0;
