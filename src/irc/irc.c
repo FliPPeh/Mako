@@ -93,13 +93,13 @@ unsigned irc_message_to_string(const struct irc_message *i,
                                size_t n)
 {
     int pos = 0;
-    pos += snprintf(dest + pos, MAX(n - pos, 0), "%s", i->command);
+    pos += snprintf(dest + pos, MAX((int)n - pos, 0), "%s", i->command);
 
     for (int j = 0; j < i->paramcount; ++j)
-        pos += snprintf(dest + pos, MAX(n - pos, 0), " %s", i->params[j]);
+        pos += snprintf(dest + pos, MAX((int)n - pos, 0), " %s", i->params[j]);
 
     if (strlen(i->msg) > 0)
-        pos += snprintf(dest + pos, MAX(n - pos, 0), " :%s", i->msg);
+        pos += snprintf(dest + pos, MAX((int)n - pos, 0), " :%s", i->msg);
 
     return strlen(dest);
 }
