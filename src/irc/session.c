@@ -470,6 +470,23 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 if (msg->params[6][i] == prf[prfsep + j + 1])
                     irc_channel_user_set_mode(user, prf[j + 1]);
 
+    } else if (!strcmp(msg->command, "367")) {
+        /* Banlist entry */
+        struct irc_channel *channel = NULL;
+
+        if (msg->paramcount < 3) {
+            log_warn("Expected at least 3 arguments, got %d", msg->paramcount);
+
+            goto exit_err;
+        }
+
+        if (!(channel = irc_channel_get(sess, msg->params[1]))) {
+            log_warn("Unable to look up channel '%s'", msg->params[1]);
+
+            goto exit_err;
+        }
+
+        irc_channel_set_mode(channel, 'b', msg->params[2]);
 
     } else if (!strcmp(msg->command, "376")) {
         /* MOTD_END */
@@ -497,6 +514,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
         if (!irc_user_cmp(msg->prefix, sess->nick)) {
             struct irc_message who;
             struct irc_message mode;
+            struct irc_message bans;
 
             const char *channel = msg->paramcount > 0
                 ? msg->params[0]
@@ -506,9 +524,12 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
             irc_mkmessage(&who, "WHO",   (const char *[]){ channel }, 1, NULL);
             irc_mkmessage(&mode, "MODE", (const char *[]){ channel }, 1, NULL);
+            irc_mkmessage(&bans, "MODE",
+                    (const char *[]){ channel, "+b" }, 2, NULL);
 
             sess_sendmsg(sess, &who);
             sess_sendmsg(sess, &mode);
+            sess_sendmsg(sess, &bans);
         } else {
             irc_channel_add_user(
                     irc_channel_get(sess, msg->params[0]),
