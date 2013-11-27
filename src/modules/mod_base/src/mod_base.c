@@ -74,7 +74,9 @@ struct mod mod_info = {
     .name = "Base",
     .descr = "Provide basic functions",
 
-    .hooks = M(EVENT_PRIVATE_CTCP_REQUEST) | M(EVENT_PUBLIC_COMMAND)
+    .hooks = M(EVENT_PRIVATE_CTCP_REQUEST)
+           | M(EVENT_PUBLIC_COMMAND)
+           | M(EVENT_INVITE)
 };
 
 char versionstr[256];
@@ -135,6 +137,21 @@ int mod_handle_event(struct mod_event *event)
                 cmd->target,
                 cmd->command,
                 cmd->args);
+
+    case EVENT_INVITE:
+        ;;
+        struct mod_event_invite *iv = &event->event.invite;
+        struct reguser *usr = NULL;
+
+        if ((usr = reguser_find(BOTREF, iv->prefix)) != NULL) {
+            struct irc_message join;
+            irc_mkmessage(&join, "JOIN",
+                    (const char *[]){ iv->channel }, 1, NULL);
+
+            bot_send_message(BOTREF, &join);
+        }
+
+        break;
 
     default:
         /* We may have bigger problems if this is ever reached... */
