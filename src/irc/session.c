@@ -635,7 +635,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             sess->cb.on_invite(
                     sess->cb.arg,
                     msg->prefix,
-                    msg->paramcount > 0
+                    msg->paramcount > 1
                         ? msg->params[0]
                         : msg->msg);
 
