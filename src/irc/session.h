@@ -17,10 +17,6 @@
 
 #define BUFFER_MAX (1024 * 8) /* 8 KiB */
 
-#define NICK_MAX 32
-#define USER_MAX 16
-#define REAL_MAX 64
-
 /* Time in seconds after which the connection is tested for aliveness */
 #define TIMEOUT 120
 
@@ -145,9 +141,9 @@ struct irc_session
 
     struct tokenbucket quota;
 
-    char nick[NICK_MAX];
-    char user[USER_MAX];
-    char real[REAL_MAX];
+    char nick[IRC_NICK_MAX];
+    char user[IRC_USER_MAX];
+    char real[IRC_REAL_MAX];
 
     struct hashtable *channels;
     struct hashtable *capabilities;

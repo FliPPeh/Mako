@@ -64,9 +64,9 @@ int main(int argc, char **argv)
     char hostname[HOSTNAME_MAX] = {0};
     char serverpass[SERVERPASS_MAX] = {0};
 
-    char nick[NICK_MAX] = DEFAULT_NICK;
-    char user[USER_MAX] = DEFAULT_USER;
-    char real[REAL_MAX] = DEFAULT_REAL;
+    char nick[IRC_NICK_MAX] = DEFAULT_NICK;
+    char user[IRC_USER_MAX] = DEFAULT_USER;
+    char real[IRC_REAL_MAX] = DEFAULT_REAL;
 
     uint16_t portno = 6667;
 

@@ -3,7 +3,14 @@
 
 #include <time.h>
 
-/* Various buffer sizes for IRC data */
+/*
+ * Rationale for using static buffer sizes:
+ *
+ * IRC has a few well defined limits, so we can assume that certain strings
+ * or arrays of strings will not realistically surpass a certain size, so we
+ * can save a malloc() and the obligatory error check in favour of a statically
+ * known size.
+ */
 #define IRC_MESSAGE_MAX         512
 #define IRC_PARAM_COUNT_MAX     16
 #define IRC_PARAM_MAX           128
@@ -18,6 +25,7 @@
 
 #define IRC_NICK_MAX 32
 #define IRC_USER_MAX 16
+#define IRC_REAL_MAX 64
 #define IRC_HOST_MAX 80
 
 #include <libutil/container/hashtable.h>
