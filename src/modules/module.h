@@ -226,5 +226,6 @@ extern struct mod mod_info;
 
 /* For being lazy */
 #define BOTREF (mod_info.bot)
+#define SESSION (BOTREF->sess)
 
 #endif /* defined MODULE_H */

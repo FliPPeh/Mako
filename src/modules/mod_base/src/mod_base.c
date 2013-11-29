@@ -209,7 +209,6 @@ int base_handle_command(
     const char *flip_strings[]     = { "heads", "tails", "side" };
     static unsigned flip_results[] = { 0,       0,       0 };
 
-    log_debug("Command: '%s'", command);
     int argc = 0;
     char **argv = dstrshlex(command, &argc);
 
@@ -226,7 +225,7 @@ int base_handle_command(
         respond(BOTREF, target, irc_get_nick(prefix), versionstr);
     } else if (!strcmp(cmd, "rek")) {
         struct irc_user *usr = irc_channel_get_user(
-                                   irc_channel_get(BOTREF->sess, target), args);
+                                   irc_channel_get(SESSION, target), args);
 
         if (usr) {
             respond(BOTREF, target, irc_get_nick(usr->prefix),
@@ -242,9 +241,9 @@ int base_handle_command(
         char contime[128] = {0};
         time_t now = time(NULL);
 
-        format_timediff(runtime, sizeof(runtime), now - BOTREF->sess->start);
+        format_timediff(runtime, sizeof(runtime), now - SESSION->start);
         format_timediff(contime, sizeof(contime),
-               now - BOTREF->sess->session_start);
+               now - SESSION->session_start);
 
         respond(BOTREF, target, irc_get_nick(prefix),
                 "Running for %s, connected for %s", runtime, contime);
