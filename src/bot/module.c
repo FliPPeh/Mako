@@ -104,9 +104,8 @@ void mod_free(void *arg)
     int (*exit)();
     struct mod_loaded *mod = (struct mod_loaded *)arg;
 
-    if ((exit = (int (*)())mod_get_symbol(mod, "exit"))) {
+    if ((exit = (int (*)())mod_get_symbol(mod, "exit")))
         exit();
-    }
 
     log_debug("Unloading '%s'", mod->path);
 
