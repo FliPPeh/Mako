@@ -20,7 +20,6 @@ struct irc_prefix_parts
  */
 int irc_split_prefix(struct irc_prefix_parts *dst, const char *prefix);
 
-
 void irc_mkmessage(struct irc_message *dest,
                    const char *cmd,
                    const char *args[], size_t n,
@@ -85,11 +84,17 @@ int irc_strwcmp(const char *str, const char *pattern);
 /*
  * Convenience functions the return the individual parts of a prefix. They all
  * use a static buffer for storing to result and return a pointer to it, so
- * multiple invocations to it in the same evaluation will yield the same result.
+ * multiple invocations to it in the same evaluation will yield the same result
+ * and are only save if different parts with the same prefix are accessed or
+ * different prefixes are split and copied into different structures, i.e
+ *
+ *   struct irc_prefix_parts a = *irc_get_prefix_parts(prefix_a);
+ *   struct irc_prefix_parts b = *irc_get_prefix_parts(prefix_b);
  *
  * irc_get_nick() and irc_get_user() return NULL if prefix is not a user prefix,
  * irc_get_host() will return the user host or server host in any case.
  */
+const struct irc_prefix_parts *irc_get_prefix_parts(const char *prefix);
 const char *irc_get_nick(const char *prefix);
 const char *irc_get_user(const char *prefix);
 const char *irc_get_host(const char *prefix);

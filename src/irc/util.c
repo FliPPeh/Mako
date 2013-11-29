@@ -196,32 +196,42 @@ int irc_strwcmp(const char *str, const char *pat)
     return !(!*str && !*pat);
 }
 
-const char *irc_get_nick(const char *prefix)
+const struct irc_prefix_parts *irc_get_prefix_parts(const char *prefix)
 {
     static struct irc_prefix_parts parts;
 
     if (irc_split_prefix(&parts, prefix))
         return NULL;
 
-    return parts.nick;
+    return &parts;
+}
+
+const char *irc_get_nick(const char *prefix)
+{
+    const struct irc_prefix_parts *parts = irc_get_prefix_parts(prefix);
+
+    if (parts)
+        return parts->nick;
+
+    return NULL;
 }
 
 const char *irc_get_user(const char *prefix)
 {
-    static struct irc_prefix_parts parts;
+    const struct irc_prefix_parts *parts = irc_get_prefix_parts(prefix);
 
-    if (irc_split_prefix(&parts, prefix))
-        return NULL;
+    if (parts)
+        return parts->user;
 
-    return parts.user;
+    return NULL;
 }
 
 const char *irc_get_host(const char *prefix)
 {
-    static struct irc_prefix_parts parts;
+    const struct irc_prefix_parts *parts = irc_get_prefix_parts(prefix);
 
-    if (irc_split_prefix(&parts, prefix))
-        return prefix;
+    if (parts)
+        return parts->host;
 
-    return parts.host;
+    return prefix;
 }
