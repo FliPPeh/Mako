@@ -63,8 +63,7 @@ int base_handle_ctcp(const char *prefix,
 
 int base_handle_command(const char *prefix,
                         const char *target,
-                        const char *cmd,
-                        const char *args);
+                        const char *command);
 
 
 void format_timediff(char *b, size_t bs, time_t tdiff);
@@ -120,12 +119,12 @@ int mod_handle_event(struct mod_event *event)
     switch (event->type) {
     case EVENT_PRIVATE_CTCP_REQUEST:
         ;; /* hack! */
-        struct mod_event_command *req = &event->event.command;
+        struct mod_event_ctcp *req = &event->event.ctcp;
 
         return base_handle_ctcp(
                 req->prefix,
                 req->target,
-                req->command,
+                req->ctcp,
                 req->args);
 
     case EVENT_PUBLIC_COMMAND:
@@ -135,8 +134,7 @@ int mod_handle_event(struct mod_event *event)
         return base_handle_command(
                 cmd->prefix,
                 cmd->target,
-                cmd->command,
-                cmd->args);
+                cmd->command);
 
     case EVENT_INVITE:
         ;;

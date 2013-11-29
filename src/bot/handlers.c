@@ -13,6 +13,7 @@
 #include "util/log.h"
 #include "util/util.h"
 
+#include <libutil/dstring.h>
 #include <libutil/container/list.h>
 
 #include <stdlib.h>
@@ -60,11 +61,16 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
 int bot_handle_command(struct bot *bot,
         const char *prefix,
         const char *target,
-        const char *cmd,
-        const char *args)
+        const char *command)
 {
     int priv = !irc_is_channel(target);
     struct reguser *usr = NULL;
+
+    int argc = 0;
+    char **argv = dstrshlex(command, &argc);
+
+    const char *cmd = argv[0];
+    const char *args = argv[1];
 
     if ((usr = reguser_find(bot, prefix))
             && reguser_match(usr, M(FLAG_MASTER), CK_MIN)) {
@@ -126,14 +132,15 @@ int bot_handle_command(struct bot *bot,
         }
     }
 
+    dstrlstfree(argv);
+
     return bot_dispatch_event(bot, &(struct mod_event) {
         .type = priv ? EVENT_PRIVATE_COMMAND : EVENT_PUBLIC_COMMAND,
         .event = {
             .command = {
                 .prefix = prefix,
                 .target = priv ? NULL : target,
-                .command = cmd,
-                .args = args
+                .command = command
             }
         }
     });
@@ -178,6 +185,13 @@ int bot_on_privmsg(void *arg,
         if ((strstr(msg, bot->sess->nick) == msg) &&
              strchr(TRIGGERS, msg[strlen(bot->sess->nick)])) {
 
+            const char *start = msg + strlen(bot->sess->nick) + 1;
+            while (isspace(*start))
+                ++start;
+
+            bot_handle_command(bot, prefix, target, start);
+
+#if 0
             /* Start of the line after strstrp() */
             char *start = NULL;
 
@@ -206,6 +220,7 @@ int bot_on_privmsg(void *arg,
             } else {
                 return bot_handle_command(bot, prefix, target, start, NULL);
             }
+#endif
 
         } else {
             int priv = !irc_is_channel(target);
@@ -457,10 +472,10 @@ int bot_on_ctcp(struct bot *bot,
     return bot_dispatch_event(bot, &(struct mod_event) {
         .type = priv ? EVENT_PRIVATE_CTCP_REQUEST : EVENT_PUBLIC_CTCP_REQUEST,
         .event = {
-            .command = {
+            .ctcp = {
                 .prefix = prefix,
                 .target = priv ? NULL : target,
-                .command = ctcp,
+                .ctcp = ctcp,
                 .args = args
             }
         }
@@ -481,10 +496,10 @@ int bot_on_ctcp_response(struct bot *bot,
     return bot_dispatch_event(bot, &(struct mod_event) {
         .type = priv ? EVENT_PRIVATE_CTCP_RESPONSE : EVENT_PUBLIC_CTCP_RESPONSE,
         .event = {
-            .command = {
+            .ctcp = {
                 .prefix = prefix,
                 .target = priv ? NULL : target,
-                .command = ctcp,
+                .ctcp = ctcp,
                 .args = args
             }
         }

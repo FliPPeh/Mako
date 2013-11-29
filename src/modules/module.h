@@ -89,8 +89,15 @@ struct mod_event_command
     const char *prefix;
     const char *target; /* NULL if private */
     const char *command;
-    const char *args;
 } command;
+
+struct mod_event_ctcp
+{
+    const char *prefix;
+    const char *target; /* NULL if private */
+    const char *ctcp;
+    const char *args;
+} ctcp;
 
 struct mod_event_join
 {
@@ -171,6 +178,7 @@ struct mod_event
         struct mod_event_raw            raw;
         struct mod_event_message        message;
         struct mod_event_command        command;
+        struct mod_event_ctcp           ctcp;
         struct mod_event_join           join;
         struct mod_event_part           part;
         struct mod_event_quit           quit;

@@ -18,7 +18,6 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev);
 int bot_handle_command(struct bot *bot,
         const char *prefix,
         const char *target,
-        const char *cmd,
         const char *args);
 
 int bot_on_event(void *arg, const struct irc_message *m);
