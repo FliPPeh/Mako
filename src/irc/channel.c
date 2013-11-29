@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <assert.h>
 
 
 /* List management */
@@ -79,6 +80,9 @@ int irc_channel_set_topic_meta(
 /* Channel user management */
 int irc_channel_add_user(struct irc_channel *chan, const char *prefix)
 {
+    assert(chan != NULL);
+    assert((strchr(prefix, '!') && strchr(prefix, '@')) && "invalid prefix");
+
     hashtable_insert(chan->users, strdup(prefix), _irc_user_new(prefix, chan));
 
     return 0;
@@ -86,6 +90,9 @@ int irc_channel_add_user(struct irc_channel *chan, const char *prefix)
 
 int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user)
 {
+    assert(chan != NULL);
+    assert(user != NULL);
+
     hashtable_remove(chan->users, user->prefix);
 
     return 0;
@@ -93,6 +100,9 @@ int irc_channel_del_user(struct irc_channel *chan, struct irc_user *user)
 
 struct irc_user *irc_channel_get_user(struct irc_channel *chn, const char *usr)
 {
+    assert(chn != NULL);
+    assert(usr != NULL);
+
     if (!strchr(usr, '!'))
         /* No '!', probably means not a full prefix => search by nickname */
         return irc_channel_get_user_by_nick(chn, usr);
@@ -112,6 +122,9 @@ struct irc_user *irc_channel_get_user_by_nick(struct irc_channel *chan,
     void *prefix;
     void *user;
 
+    assert(chan != NULL);
+    assert(nick != NULL);
+
     hashtable_iterator_init(&iter, chan->users);
     while (hashtable_iterator_next(&iter, &prefix, &user))
         if (!irc_user_cmp(prefix, nick))
@@ -128,6 +141,9 @@ struct irc_user *irc_channel_get_user_by_mask(struct irc_channel *chan,
     void *prefix;
     void *user;
 
+    assert(chan != NULL);
+    assert(mask != NULL);
+
     hashtable_iterator_init(&iter, chan->users);
     while (hashtable_iterator_next(&iter, &prefix, &user))
         if (!irc_strwcmp(prefix, mask))
@@ -139,6 +155,8 @@ struct irc_user *irc_channel_get_user_by_mask(struct irc_channel *chan,
 int irc_channel_rename_user(
         struct irc_channel *chan, struct irc_user *user, const char *pref)
 {
+    assert((strchr(pref, '!') && strchr(pref, '@')) && "invalid prefix");
+
     struct irc_user *newuser = _irc_user_new(pref, chan);
 
     /* Copy modes from old to new */
@@ -156,6 +174,8 @@ int irc_channel_rename_user(
  */
 int irc_channel_set_mode(struct irc_channel *c, char mode, const char *arg)
 {
+    assert(c != NULL);
+
     enum irc_mode_type type = _irc_channel_mode_type(c->session, mode);
     if (type != IRC_MODE_CHANUSER) {
         struct irc_mode *m = hashtable_lookup(c->modes, &mode);
@@ -190,6 +210,8 @@ int irc_channel_set_mode(struct irc_channel *c, char mode, const char *arg)
 
 int irc_channel_unset_mode(struct irc_channel *c, char mode, const char *arg)
 {
+    assert(c != NULL);
+
     enum irc_mode_type type = _irc_channel_mode_type(c->session, mode);
 
     if (type != IRC_MODE_CHANUSER) {
@@ -238,6 +260,8 @@ int irc_channel_unset_mode(struct irc_channel *c, char mode, const char *arg)
 
 enum irc_mode_type _irc_channel_mode_type(struct irc_session *sess, char mode)
 {
+    assert(sess);
+
     if (strchr(sess->chanmodes[MODE_LIST], mode))
         return IRC_MODE_LIST;
     else if (strchr(sess->chanmodes[MODE_REQARG], mode)
@@ -258,6 +282,8 @@ int _irc_channel_mode_strcmp(const void *list, const void *search, void *ud)
 
 int irc_channel_user_set_mode(struct irc_user *u, char mode)
 {
+    assert(u);
+
     if (!strchr(u->modes, mode) && (strlen(u->modes) < IRC_FLAGS_MAX - 1))
         u->modes[strlen(u->modes)] = mode;
 
@@ -267,6 +293,7 @@ int irc_channel_user_set_mode(struct irc_user *u, char mode)
 int irc_channel_user_unset_mode(struct irc_user *u, char mode)
 {
     char *pos = NULL;
+    assert(u);
 
     if ((pos = strchr(u->modes, mode))) {
         memmove(pos, pos + 1, strlen(u->modes) - (size_t)(pos - u->modes));
@@ -280,37 +307,55 @@ int irc_channel_user_unset_mode(struct irc_user *u, char mode)
 /* Utility functions */
 struct irc_user *_irc_user_new(const char *pref, struct irc_channel *c)
 {
+    assert(pref != NULL);
+    assert(c != NULL);
+
     struct irc_user *usr = malloc(sizeof(*usr));
 
-    memset(usr, 0, sizeof(*usr));
-    strncpy(usr->prefix, pref, sizeof(usr->prefix) - 1);
-    usr->channel = c;
+    if (usr) {
+        memset(usr, 0, sizeof(*usr));
+        strncpy(usr->prefix, pref, sizeof(usr->prefix) - 1);
+        usr->channel = c;
+    } else {
+        log_error("_irc_user_new(): not enough memory for allocation");
+    }
 
     return usr;
 }
 
 struct irc_channel *_irc_channel_new(const char *name, struct irc_session *s)
 {
-    struct irc_channel *chn = malloc(sizeof(*chn));
+    assert(name != NULL);
+    assert(s != NULL);
 
-    memset(chn, 0, sizeof(*chn));
-    strncpy(chn->name, name, sizeof(chn->name) - 1);
+    struct irc_channel *c = malloc(sizeof(*c));
 
-    chn->users = hashtable_new_with_free(ascii_hash, ascii_equal, free, free);
-    chn->modes = hashtable_new_with_free(char_hash, char_equal,
-                                         free,      irc_mode_free);
-    chn->session = s;
+    if (c) {
+        memset(c, 0, sizeof(*c));
+        strncpy(c->name, name, sizeof(c->name) - 1);
 
-    return chn;
+        c->users = hashtable_new_with_free(ascii_hash, ascii_equal, free, free);
+        c->modes = hashtable_new_with_free(char_hash, char_equal,
+                                           free,      irc_mode_free);
+        c->session = s;
+    } else {
+        log_error("_irc_channel_new(): not enough memory for allocation");
+    }
+
+    return c;
 }
 
 struct irc_mode *_irc_mode_new(char mode, enum irc_mode_type type)
 {
     struct irc_mode *mde = malloc(sizeof(*mde));
 
-    memset(mde, 0, sizeof(*mde));
-    mde->mode = mode;
-    mde->type = type;
+    if (mde) {
+        memset(mde, 0, sizeof(*mde));
+        mde->mode = mode;
+        mde->type = type;
+    } else {
+        log_error("_irc_mode_new(): not enough memory for allocation");
+    }
 
     return mde;
 }
