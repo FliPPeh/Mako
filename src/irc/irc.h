@@ -21,7 +21,6 @@
 #define IRC_CHANNEL_MAX         128
 #define IRC_TOPIC_MAX           512
 #define IRC_CHANNEL_PREFIX_MAX  16
-#define IRC_CAPABILITY_MAX      64
 
 #define IRC_NICK_MAX 32
 #define IRC_USER_MAX 16
@@ -33,6 +32,9 @@
 
 #include "irc/channel.h"
 
+/*
+ * Used to classify IRC modes to correctly parse arguments.
+ */
 enum irc_mode_style
 {
     MODE_LIST,
@@ -67,9 +69,5 @@ unsigned irc_message_size(const struct irc_message *i);
  * User comparison based on nick/host
  */
 int irc_user_cmp(const char *a, const char *b);
-
-/* Server capabilities */
-const char *irc_capability_get(struct hashtable *cl, const char *cap);
-int irc_capability_set(struct hashtable *cl, const char *cap, const char *val);
 
 #endif /* defined IRC_H */

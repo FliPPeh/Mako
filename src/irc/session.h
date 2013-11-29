@@ -171,6 +171,10 @@ void sess_destroy(struct irc_session *sess);
 /*
  * Util
  */
+const char *sess_capability_get(struct irc_session *sess, const char *cap);
+int         sess_capability_set(struct irc_session *sess, const char *cap,
+                                                          const char *val);
+
 int sess_getln(struct irc_session *sess, char *linebuf, size_t linebufsiz);
 int sess_sendmsg(struct irc_session *sess, const struct irc_message *msg);
 

@@ -131,16 +131,3 @@ int irc_user_cmp(const char *a, const char *b)
     return (reallen_a != reallen_b) ? 1 : strncasecmp(a, b, cmplen);
 }
 
-/* Server capabilities */
-const char *irc_capability_get(struct hashtable *cl, const char *cap)
-{
-    return hashtable_lookup(cl, cap);
-}
-
-int irc_capability_set(struct hashtable *cl, const char *cap, const char *val)
-{
-    hashtable_insert(cl, strdup(cap), strdup(val));
-
-    return 0;
-}
-

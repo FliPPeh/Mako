@@ -59,6 +59,18 @@ void sess_destroy(struct irc_session *sess)
 /*
  * Util
  */
+const char *sess_capability_get(struct irc_session *sess, const char *cap)
+{
+    return hashtable_lookup(sess->capabilities, cap);
+}
+
+int sess_capability_set(struct irc_session *sess, const char *cap,
+                                                  const char *val)
+{
+    hashtable_insert(sess->capabilities, strdup(cap), strdup(val));
+    return 0;
+}
+
 int sess_getln(struct irc_session *sess, char *linebuf, size_t linebufsiz)
 {
     char *crlf = NULL;
@@ -346,13 +358,11 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             memcpy(capability, msg->params[i], sizeof(capability));
 
             if (!(eq = strchr(msg->params[i], '='))) {
-                irc_capability_set(sess->capabilities, msg->params[i], NULL);
-
+                sess_capability_set(sess, msg->params[i], NULL);
                 sess_handle_isupport(sess, msg->params[i], NULL);
             } else {
                 *eq = '\0';
-                irc_capability_set(sess->capabilities, msg->params[i], eq + 1);
-
+                sess_capability_set(sess, msg->params[i], eq + 1);
                 sess_handle_isupport(sess, msg->params[i], eq + 1);
             }
         }
@@ -432,8 +442,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             struct irc_user *user = NULL;
 
             if (!(user = irc_channel_get_user(channel, msg->params[5])))  {
-                const char *prf = irc_capability_get(sess->capabilities,
-                                                     "PREFIX");
+                const char *prf = sess_capability_get(sess, "PREFIX");
                 size_t prfsep = strlen(prf) / 2;
 
                 char prefix[IRC_PREFIX_MAX] = {0};
