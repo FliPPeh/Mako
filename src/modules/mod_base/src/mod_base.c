@@ -204,24 +204,38 @@ int base_handle_ctcp(
 int base_handle_command(
         const char *prefix,
         const char *target,
-        const char *cmd,
-        const char *args)
+        const char *command)
 {
-    struct irc_prefix_parts user;
-
-    irc_split_prefix(&user, prefix);
-
     const char *flip_strings[]     = { "heads", "tails", "side" };
     static unsigned flip_results[] = { 0,       0,       0 };
 
+    log_debug("Command: '%s'", command);
+    int argc = 0;
+    char **argv = dstrshlex(command, &argc);
+
+    if (!argc)
+        return 0;
+
+    const char *cmd = argv[0];
+    const char *args = argv[1];
+
     if (!strcmp(cmd, "ping")) {
-        respond(BOTREF, target, user.nick, "pong");
+        respond(BOTREF, target, irc_get_nick(prefix), "pong");
 
     } else if (!strcmp(cmd, "version")) {
-        respond(BOTREF, target, user.nick, versionstr);
+        respond(BOTREF, target, irc_get_nick(prefix), versionstr);
     } else if (!strcmp(cmd, "rek")) {
-        respond(BOTREF, target, args,
+        struct irc_user *usr = irc_channel_get_user(
+                                   irc_channel_get(BOTREF->sess, target), args);
+
+        if (usr) {
+            respond(BOTREF, target, irc_get_nick(usr->prefix),
                 reks[rand() % NREKS]);
+        } else {
+            respond(BOTREF, target, irc_get_nick(prefix),
+                    "You suck, %s isn't even here.",
+                    args);
+        }
 
     } else if (!strcmp(cmd, "uptime")) {
         char runtime[128] = {0};
@@ -232,7 +246,7 @@ int base_handle_command(
         format_timediff(contime, sizeof(contime),
                now - BOTREF->sess->session_start);
 
-        respond(BOTREF, target, user.nick,
+        respond(BOTREF, target, irc_get_nick(prefix),
                 "Running for %s, connected for %s", runtime, contime);
 
     } else if (!strcmp(cmd, "flipcoin")) {
@@ -245,20 +259,21 @@ int base_handle_command(
             case SIDE:  flip_results[SIDE]++;  break;
         }
 
-        respond(BOTREF, target, user.nick, "%s!", flip_strings[res]);
+        respond(BOTREF, target, irc_get_nick(prefix), "%s!", flip_strings[res]);
 
     } else if (!strcmp(cmd, "coinstats")) {
         unsigned total = flip_results[HEADS]
                        + flip_results[TAILS]
                        + flip_results[SIDE];
 
-        respond(BOTREF, target, user.nick, "%u total, %.2lf%% heads, "
-                                                    " %.2lf%% tails, "
-                                                    " %.2lf%% side",
-                total, (double)flip_results[HEADS] / total,
-                       (double)flip_results[TAILS] / total,
-                       (double)flip_results[SIDE] / total);
+        respond(BOTREF, target, irc_get_nick(prefix),
+                "%u total, %.2lf%% heads, %.2lf%% tails, %.2lf%% side",
+                    total, (double)flip_results[HEADS] / total,
+                           (double)flip_results[TAILS] / total,
+                           (double)flip_results[SIDE] / total);
     }
+
+    dstrlstfree(argv);
 
     return 0;
 }

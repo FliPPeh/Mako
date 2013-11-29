@@ -82,5 +82,16 @@ const char *irc_proper_target(const char *orig_target, const char *opt_user);
  */
 int irc_strwcmp(const char *str, const char *pattern);
 
+/*
+ * Convenience functions the return the individual parts of a prefix. They all
+ * use a static buffer for storing to result and return a pointer to it, so
+ * multiple invocations to it in the same evaluation will yield the same result.
+ *
+ * irc_get_nick() and irc_get_user() return NULL if prefix is not a user prefix,
+ * irc_get_host() will return the user host or server host in any case.
+ */
+const char *irc_get_nick(const char *prefix);
+const char *irc_get_user(const char *prefix);
+const char *irc_get_host(const char *prefix);
 
 #endif /* defined IRC_UTIL_H */
