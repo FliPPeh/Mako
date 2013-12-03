@@ -3,7 +3,6 @@
 #include "irc/session.h"
 #include "irc/util.h"
 
-#include "bot/helpers.h"
 #include "bot/reguser.h"
 
 #include "util/log.h"
@@ -143,7 +142,7 @@ int mod_handle_event(struct mod_event *event)
 
         if ((usr = reguser_find(BOTREF, iv->prefix)) != NULL) {
             struct irc_message join;
-            irc_mkmessage(&join, "JOIN",
+            irc_mkmessage(&join, CMD_JOIN,
                     (const char *[]){ iv->channel }, 1, NULL);
 
             bot_send_message(BOTREF, &join);
@@ -172,17 +171,17 @@ int base_handle_ctcp(
     irc_split_prefix(&user, prefix);
 
     if (!strcmp(ctcp, "CLIENTINFO")) {
-        ctcp_response(BOTREF, user.nick, ctcp,
+        ctcp_response(SESSION, user.nick, ctcp,
             "CLIENTINFO PING VERSION ACTION SOURCE TIME USERINFO");
 
     } else if (!strcmp(ctcp, "PING")) {
-        ctcp_response(BOTREF, user.nick, ctcp, "%s", args);
+        ctcp_response(SESSION, user.nick, ctcp, "%s", args);
 
     } else if (!strcmp(ctcp, "VERSION")) {
-        ctcp_response(BOTREF, user.nick, ctcp, versionstr);
+        ctcp_response(SESSION, user.nick, ctcp, versionstr);
 
     } else if (!strcmp(ctcp, "SOURCE")) {
-        ctcp_response(BOTREF, user.nick, ctcp,
+        ctcp_response(SESSION, user.nick, ctcp,
             "https://github.com/FliPPeh/Modbot/");
 
     } else if (!strcmp(ctcp, "TIME")) {
@@ -192,10 +191,10 @@ int base_handle_ctcp(
 
         strftime(timestr, sizeof(timestr), "%Y-%m-%dT%T UTC%z (%Z)", nowtm);
 
-        ctcp_response(BOTREF, user.nick, ctcp, timestr);
+        ctcp_response(SESSION, user.nick, ctcp, timestr);
 
     } else if (!strcmp(ctcp, "USERINFO")) {
-        ctcp_response(BOTREF, user.nick, ctcp, "Hello :)");
+        ctcp_response(SESSION, user.nick, ctcp, "Hello :)");
     }
 
     return 0;
@@ -219,19 +218,19 @@ int base_handle_command(
     const char *args = argv[1];
 
     if (!strcmp(cmd, "ping")) {
-        respond(BOTREF, target, irc_get_nick(prefix), "pong");
+        respond(SESSION, target, irc_get_nick(prefix), "pong");
 
     } else if (!strcmp(cmd, "version")) {
-        respond(BOTREF, target, irc_get_nick(prefix), versionstr);
+        respond(SESSION, target, irc_get_nick(prefix), versionstr);
     } else if (!strcmp(cmd, "rek")) {
         struct irc_user *usr = irc_channel_get_user(
                                    irc_channel_get(SESSION, target), args);
 
         if (usr) {
-            respond(BOTREF, target, irc_get_nick(usr->prefix),
+            respond(SESSION, target, irc_get_nick(usr->prefix),
                 reks[rand() % NREKS]);
         } else {
-            respond(BOTREF, target, irc_get_nick(prefix),
+            respond(SESSION, target, irc_get_nick(prefix),
                     "You suck, %s isn't even here.",
                     args);
         }
@@ -245,7 +244,7 @@ int base_handle_command(
         format_timediff(contime, sizeof(contime),
                now - SESSION->session_start);
 
-        respond(BOTREF, target, irc_get_nick(prefix),
+        respond(SESSION, target, irc_get_nick(prefix),
                 "Running for %s, connected for %s", runtime, contime);
 
     } else if (!strcmp(cmd, "flipcoin")) {
@@ -258,14 +257,14 @@ int base_handle_command(
             case SIDE:  flip_results[SIDE]++;  break;
         }
 
-        respond(BOTREF, target, irc_get_nick(prefix), "%s!", flip_strings[res]);
+        respond(SESSION, target, irc_get_nick(prefix), "%s!", flip_strings[res]);
 
     } else if (!strcmp(cmd, "coinstats")) {
         unsigned total = flip_results[HEADS]
                        + flip_results[TAILS]
                        + flip_results[SIDE];
 
-        respond(BOTREF, target, irc_get_nick(prefix),
+        respond(SESSION, target, irc_get_nick(prefix),
                 "%u total, %.2lf%% heads, %.2lf%% tails, %.2lf%% side",
                     total, (double)flip_results[HEADS] / total,
                            (double)flip_results[TAILS] / total,

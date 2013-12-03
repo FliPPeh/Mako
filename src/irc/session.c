@@ -196,7 +196,8 @@ int sess_main(struct irc_session *sess)
                                 time(NULL) - last_sign_of_life, buffer);
 
                     struct irc_message ping;
-                    irc_mkmessage(&ping, "PING", NULL, 0, "%s", sess->hostname);
+                    irc_mkmessage(&ping, CMD_PING, NULL, 0, "%s",
+                        sess->hostname);
 
                     if (sess_sendmsg_real(sess, &ping) <= 0)
                         break;
@@ -251,8 +252,8 @@ int sess_login(struct irc_session *sess)
     struct irc_message nick;
     struct irc_message user;
 
-    irc_mkmessage(&nick, "NICK", (const char *[]){ sess->nick }, 1, NULL);
-    irc_mkmessage(&user, "USER",
+    irc_mkmessage(&nick, CMD_NICK, (const char *[]){ sess->nick }, 1, NULL);
+    irc_mkmessage(&user, CMD_USER,
             (const char *[]){ sess->user, "*", "*" }, 3, "%s", sess->real);
 
     sess_sendmsg_real(sess, &nick);
@@ -261,7 +262,7 @@ int sess_login(struct irc_session *sess)
     if (strcmp(sess->serverpass, "") != 0) {
         struct irc_message pass;
 
-        irc_mkmessage(&pass, "PASS",
+        irc_mkmessage(&pass, CMD_PASS,
                 (const char*[]){ sess->serverpass }, 1, NULL);
 
         sess_sendmsg_real(sess, &pass);
@@ -331,26 +332,50 @@ int sess_handle_data(struct irc_session *sess, struct timeval *timeout)
 /*
  * Logic
  */
+
+/*
+ * Centralize a few commonly used warning messages and checks.
+ *
+ * Macros are evil, but repeating yourself is worse.
+ */
+#define CHECK_ARGC(least, msg)                                     \
+    if ((msg)->paramcount < least) {                               \
+        WARN_BAD_ARGC((msg)->command,                              \
+                (least), (msg)->paramcount);                       \
+        goto exit_err;                                             \
+    }
+
+#define WARN_UNKNOWN_CHAN(dom, chname) \
+    log_warn("%s: Unknown channel `%s'", irc_command_to_string(dom), (chname));
+
+#define WARN_UNKNOWN_CHUSER(dom, chan, uname)                   \
+    log_warn("%s: Unknown channel user `%s' for channel `%s'",  \
+            irc_command_to_string(dom), (uname), (chan)->name);
+
+#define WARN_BAD_ARGC(dom, e, h)                           \
+    log_warn("%s: Expected at least %d arguments, got %d", \
+            irc_command_to_string(dom), (e), (h));
+
+
 int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 {
     if (sess->cb.on_event)
         sess->cb.on_event(sess->cb.arg, msg);
 
-    if (!strcmp(msg->command, "PING")) {
+    if (msg->command == CMD_PING) {
         struct irc_message pong;
 
-        irc_mkmessage(&pong, "PONG", NULL, 0, "%s", msg->msg);
+        irc_mkmessage(&pong, CMD_PONG, NULL, 0, "%s", msg->msg);
         sess_sendmsg(sess, &pong);
 
         if (sess->cb.on_ping)
             sess->cb.on_ping(sess->cb.arg);
 
-    } else if (!strcmp(msg->command, "001")) {
+    } else if (msg->command == RPL_WELCOME) {
         if (sess->cb.on_connect)
             sess->cb.on_connect(sess->cb.arg);
 
-    } else if (!strcmp(msg->command, "005")) {
-        /* ISUPPORT */
+    } else if (msg->command == RPL_ISUPPORT) {
         char capability[IRC_PARAM_MAX];
         char *eq = NULL;
 
@@ -366,77 +391,54 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 sess_handle_isupport(sess, msg->params[i], eq + 1);
             }
         }
-    } else if (!strcmp(msg->command, "332")) {
-        /* REPL_TOPIC */
+    } else if (msg->command == RPL_TOPIC) {
         struct irc_channel *target = NULL;
 
-        if (msg->paramcount < 2) {
-            log_warn("Expected at least 2 arguments, got %d", msg->paramcount);
-            goto exit_err;
-        }
+        CHECK_ARGC(2, msg);
 
         if ((target = irc_channel_get(sess, msg->params[1])))
             irc_channel_set_topic(target, msg->msg);
         else
-            log_warn("Got topic for unknown channel '%s'", msg->params[1]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[1]);
 
 
-    } else if (!strcmp(msg->command, "333")) {
+    } else if (msg->command == RPL_TOPICWHOTIME) {
         /* REPL_TOPIC_META */
         struct irc_channel *target = NULL;
 
-        if (msg->paramcount < 4) {
-            log_warn("Expected at least 4 arguments, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(4, msg);
 
         if ((target = irc_channel_get(sess, msg->params[1])))
             irc_channel_set_topic_meta(target,
                 msg->params[2], atoi(msg->params[3]));
         else
-            log_warn("Got topic for unknown channel '%s'", msg->params[1]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[1]);
 
 
-    } else if (!strcmp(msg->command, "324")) {
-        /* REPL_MODE */
-        if (msg->paramcount < 3) {
-            log_warn("Expected at least 3 arguments, got %d", msg->paramcount);
+    } else if (msg->command == RPL_CHANNELMODEIS) {
+        CHECK_ARGC(3, msg);
 
-            goto exit_err;
-        }
+        sess_handle_mode_change(sess,
+                msg->prefix,
+                msg->params[1], /* channel */
+                msg->params[2], /* modestring */
+                msg->params, 3, msg->paramcount); /* param start and end */
 
-       sess_handle_mode_change(sess,
-               msg->prefix,
-               msg->params[1], /* channel */
-               msg->params[2], /* modestring */
-               msg->params, 3, msg->paramcount); /* param start and end */
-
-    } else if (!strcmp(msg->command, "329")) {
-        /* REPL_MODE2 */
+    } else if (msg->command == RPL_CREATIONTIME) {
         struct irc_channel *target = NULL;
 
-        if (msg->paramcount < 3) {
-            log_warn("Expected at least 3 arguments, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(3, msg);
 
         if ((target = irc_channel_get(sess, msg->params[1])))
             irc_channel_set_created(target, atoi(msg->params[2]));
         else
-            log_warn("Got meta for unknown channel '%s'", msg->params[1]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[1]);
 
 
-    } else if (!strcmp(msg->command, "352")) {
-        /* REPL_WHO */
+    } else if (msg->command == RPL_WHOREPLY) {
         struct irc_channel *channel = NULL;
 
-        if (msg->paramcount < 7) {
-            log_warn("Expected at least 7 arguments, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(7, msg);
 
         if ((channel = irc_channel_get(sess, msg->params[1]))) {
             struct irc_user *user = NULL;
@@ -466,55 +468,43 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                         if (msg->params[6][i] == prf[prfsep + j + 1])
                             irc_channel_user_set_mode(user, prf[j + 1]);
             } else {
-                log_warn("User '%s' already in channel", msg->params[5]);
+                log_warn("%s: User '%s' already in channel",
+                        irc_command_to_string(msg->command), msg->params[5]);
             }
         } else {
-            log_warn("Got WHO reply for unknown channel '%s'", msg->params[1]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[1]);
         }
 
 
-    } else if (!strcmp(msg->command, "367")) {
-        /* Banlist entry */
+    } else if (msg->command == RPL_BANLIST) {
         struct irc_channel *channel = NULL;
 
-        if (msg->paramcount < 3) {
-            log_warn("Expected at least 3 arguments, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(3, msg);
 
         if ((channel = irc_channel_get(sess, msg->params[1])))
             irc_channel_set_mode(channel, 'b', msg->params[2]);
         else
-            log_warn("Got ban entry for unknown channel '%s'", msg->params[1]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[1]);
 
 
-    } else if (!strcmp(msg->command, "376")) {
+    } else if (msg->command == RPL_ENDOFMOTD) {
         /* MOTD_END */
 
-    } else if (!strcmp(msg->command, "PRIVMSG")) {
-        if (msg->paramcount < 1) {
-            log_warn("Expected at least 1 argument, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+    } else if (msg->command == CMD_PRIVMSG) {
+        CHECK_ARGC(1, msg);
 
         if (sess->cb.on_privmsg)
             sess->cb.on_privmsg(sess->cb.arg,
                     msg->prefix, msg->params[0], msg->msg);
 
-    } else if (!strcmp(msg->command, "NOTICE")) {
-        if (msg->paramcount < 1) {
-            log_warn("Expected at least 1 argument, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+    } else if (msg->command == CMD_NOTICE) {
+        CHECK_ARGC(1, msg);
 
         if (sess->cb.on_notice)
             sess->cb.on_notice(sess->cb.arg,
                     msg->prefix, msg->params[0], msg->msg);
 
-    } else if (!strcmp(msg->command, "JOIN")) {
+    } else if (msg->command == CMD_JOIN) {
         if (!irc_user_cmp(msg->prefix, sess->nick)) {
             struct irc_message who;
             struct irc_message mode;
@@ -526,9 +516,11 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
 
             irc_channel_add(sess, channel);
 
-            irc_mkmessage(&who, "WHO",   (const char *[]){ channel }, 1, NULL);
-            irc_mkmessage(&mode, "MODE", (const char *[]){ channel }, 1, NULL);
-            irc_mkmessage(&bans, "MODE",
+            irc_mkmessage(&who, CMD_WHO,
+                    (const char *[]){ channel }, 1, NULL);
+            irc_mkmessage(&mode, CMD_MODE,
+                    (const char *[]){ channel }, 1, NULL);
+            irc_mkmessage(&bans, CMD_MODE,
                     (const char *[]){ channel, "+b" }, 2, NULL);
 
             sess_sendmsg(sess, &who);
@@ -540,20 +532,16 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             if ((channel = irc_channel_get(sess, msg->params[0])))
                 irc_channel_add_user(channel, msg->prefix);
             else
-                log_warn("Got JOIN for unknown channel '%s'", msg->params[0]);
+                WARN_UNKNOWN_CHAN(msg->command, msg->params[0]);
         }
 
         if (sess->cb.on_join)
             sess->cb.on_join(sess->cb.arg, msg->prefix, msg->params[0]);
 
-    } else if (!strcmp(msg->command, "PART")) {
+    } else if (msg->command == CMD_PART) {
         struct irc_channel *target = NULL;
 
-        if (msg->paramcount < 1) {
-            log_warn("Expected at least 1 argument, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(1, msg);
 
         if (sess->cb.on_part)
             sess->cb.on_part(sess->cb.arg,
@@ -568,20 +556,16 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 if ((usr = irc_channel_get_user(target, msg->prefix)))
                     irc_channel_del_user(target, usr);
                 else
-                    log_warn("Tried to remove unknown user '%s'", msg->prefix);
+                    WARN_UNKNOWN_CHUSER(msg->command, target, msg->prefix);
             }
         } else {
-            log_warn("Got PART for unknown channel '%s'", msg->params[0]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[0]);
         }
 
-    } else if (!strcmp(msg->command, "KICK")) {
+    } else if (msg->command == CMD_KICK) {
         struct irc_channel *target = NULL;
 
-        if (msg->paramcount < 2) {
-            log_warn("Expected at least 2 arguments, got %d", msg->paramcount);
-
-            goto exit_err;
-        }
+        CHECK_ARGC(2, msg);
 
         if ((target =  irc_channel_get(sess, msg->params[0]))) {
             struct irc_user *utarget = NULL;
@@ -599,14 +583,14 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 else
                     irc_channel_del_user(target, utarget);
             } else {
-                log_warn("Unable to look up channel user '%s'", msg->params[1]);
+                WARN_UNKNOWN_CHUSER(msg->command, target, msg->params[1]);
             }
         } else {
-            log_warn("Got KICK for unknown channel '%s'", msg->params[0]);
+            WARN_UNKNOWN_CHAN(msg->command, msg->params[0]);
         }
 
 
-    } else if (!strcmp(msg->command, "QUIT")) {
+    } else if (msg->command == CMD_QUIT) {
         if (sess->cb.on_quit)
             sess->cb.on_quit(sess->cb.arg, msg->prefix, msg->msg);
 
@@ -622,7 +606,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 irc_channel_del_user(v, usr);
         }
 
-    } else if (!strcmp(msg->command, "NICK")) {
+    } else if (msg->command == CMD_KICK) {
         struct irc_user *user = NULL;
         const char *newnick = msg->paramcount > 0
             ? msg->params[0]
@@ -656,10 +640,10 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
             if (sess->cb.on_nick)
                 sess->cb.on_nick(sess->cb.arg, oldprefix, newprefix);
         } else {
-            log_warn("Invalid prefix");
+            log_warn("Invalid user prefix: `%s'", msg->prefix);
         }
 
-    } else if (!strcmp(msg->command, "INVITE")) {
+    } else if (msg->command == CMD_INVITE) {
         if (sess->cb.on_invite)
             sess->cb.on_invite(
                     sess->cb.arg,
@@ -668,9 +652,11 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                         ? msg->params[0]
                         : msg->msg);
 
-    } else if (!strcmp(msg->command, "TOPIC")) {
+    } else if (msg->command == CMD_TOPIC) {
         struct irc_channel *target = NULL;
         struct irc_message topic;
+
+        CHECK_ARGC(1, msg);
 
         if (sess->cb.on_topic)
             sess->cb.on_topic(
@@ -680,21 +666,16 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                     target->topic,
                     msg->msg);
 
-        irc_mkmessage(&topic, "TOPIC",
+        irc_mkmessage(&topic, CMD_TOPIC,
                 (const char *[]){ msg->params[0] }, 1, NULL);
 
         sess_sendmsg(sess, &topic);
 
-    } else if (!strcmp(msg->command, "MODE")) {
+    } else if (msg->command == CMD_MODE) {
         if ((msg->paramcount > 0) && (!irc_is_channel(msg->params[0]))) {
             log_debug("ignoring user mode on self");
         } else {
-            if (msg->paramcount < 2) {
-                log_warn("Expected at least 2 arguments, got %d",
-                        msg->paramcount);
-
-                goto exit_err;
-            }
+            CHECK_ARGC(2, msg);
 
             if (irc_user_cmp(msg->params[0], sess->nick))
                 sess_handle_mode_change(sess,

@@ -5,6 +5,8 @@
 
 #include <libutil/container/hashtable.h>
 
+#include <time.h>
+
 enum irc_mode_type
 {
     IRC_MODE_SIMPLE,  /* +c, +t, ... => argument        */

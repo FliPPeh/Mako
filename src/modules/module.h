@@ -73,7 +73,7 @@ static const char *_mod_event_name[] = { EVENTS };
 struct mod_event_raw
 {
     const struct irc_message *msg;
-} raw;
+};
 
 /* privmsg, notice and action */
 struct mod_event_message
@@ -81,7 +81,7 @@ struct mod_event_message
     const char *prefix;
     const char *target; /* NULL if private */
     const char *msg;
-} message;
+};
 
 /* ctcp response, ctcp request, triggered commands */
 struct mod_event_command
@@ -89,7 +89,7 @@ struct mod_event_command
     const char *prefix;
     const char *target; /* NULL if private */
     const char *command;
-} command;
+};
 
 struct mod_event_ctcp
 {
@@ -97,26 +97,26 @@ struct mod_event_ctcp
     const char *target; /* NULL if private */
     const char *ctcp;
     const char *args;
-} ctcp;
+};
 
 struct mod_event_join
 {
     const char *prefix;
     const char *channel;
-} join;
+};
 
 struct mod_event_part
 {
     const char *prefix;
     const char *channel;
     const char *msg;
-} part;
+};
 
 struct mod_event_quit
 {
     const char *prefix;
     const char *msg;
-} quit;
+};
 
 struct mod_event_kick
 {
@@ -124,19 +124,19 @@ struct mod_event_kick
     const char *prefix_kicked;
     const char *channel;
     const char *msg;
-} kick;
+};
 
 struct mod_event_nick
 {
     const char *prefix_old;
     const char *prefix_new;
-} nick;
+};
 
 struct mod_event_invite
 {
     const char *prefix;
     const char *channel;
-} invite;
+};
 
 struct mod_event_topic
 {
@@ -144,7 +144,7 @@ struct mod_event_topic
     const char *channel;
     const char *topic_old;
     const char *topic_new;
-} topic;
+};
 
 /* mode set and mode unset - only called for channel modes */
 struct mod_event_mode_change
@@ -153,7 +153,7 @@ struct mod_event_mode_change
     const char *channel;
     char mode;
     const char *arg;
-} mode_change;
+};
 
 /* raw mode string, not broken up - only called for channel modes */
 struct mod_event_modes
@@ -161,13 +161,13 @@ struct mod_event_modes
     const char *prefix;
     const char *channel;
     const char *modes;
-} modes;
+};
 
 /* aux. event, called every second (default) */
 struct mod_event_idle
 {
     time_t last;
-} idle;
+};
 
 struct mod_event
 {

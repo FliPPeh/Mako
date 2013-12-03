@@ -1,8 +1,6 @@
 #ifndef IRC_H
 #define IRC_H
 
-#include <time.h>
-
 /*
  * Rationale for using static buffer sizes:
  *
@@ -27,10 +25,9 @@
 #define IRC_REAL_MAX 64
 #define IRC_HOST_MAX 80
 
-#include <libutil/container/hashtable.h>
-#include <libutil/container/list.h>
 
 #include "irc/channel.h"
+#include "irc/protocol.h"
 
 /*
  * Used to classify IRC modes to correctly parse arguments.
@@ -46,7 +43,7 @@ enum irc_mode_style
 struct irc_message
 {
     char prefix[IRC_PREFIX_MAX];
-    char command[IRC_COMMAND_MAX];
+    enum irc_command command;
     char params[IRC_PARAM_COUNT_MAX][IRC_PARAM_MAX];
     int paramcount;
 
@@ -69,5 +66,8 @@ unsigned irc_message_size(const struct irc_message *i);
  * User comparison based on nick/host
  */
 int irc_user_cmp(const char *a, const char *b);
+
+const char *irc_command_to_string(enum irc_command cmd);
+enum irc_command irc_string_to_command(const char *cmd);
 
 #endif /* defined IRC_H */

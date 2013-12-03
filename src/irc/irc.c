@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 /*
  * IRC message handling
@@ -46,7 +47,11 @@ int irc_parse_message(const char *line, struct irc_message *msg)
     while (*next == ' ')
         ++next;
 
-    strncpy(msg->command, prev, MIN(len, sizeof(msg->command) - 1));
+    char cmdbuf[16] = {0};
+    strncpy(cmdbuf, prev, MIN(len, sizeof(cmdbuf) - 1));
+
+    if ((msg->command = irc_string_to_command(cmdbuf)) == (enum irc_command)-1)
+        return 1;
 
     do {
         prev = next;
@@ -77,7 +82,7 @@ void irc_print_message(const struct irc_message *i)
     if (strlen(i->prefix))
         printf(":%s ", i->prefix);
 
-    printf("%s", i->command);
+    printf("%s", irc_command_to_string(i->command));
 
     for (int j = 0; j < i->paramcount; j++)
         printf(" %s", i->params[j]);
@@ -93,7 +98,8 @@ unsigned irc_message_to_string(const struct irc_message *i,
                                size_t n)
 {
     int pos = 0;
-    pos += snprintf(dest + pos, MAX((int)n - pos, 0), "%s", i->command);
+    pos += snprintf(dest + pos, MAX((int)n - pos, 0), "%s",
+            irc_command_to_string(i->command));
 
     for (int j = 0; j < i->paramcount; ++j)
         pos += snprintf(dest + pos, MAX((int)n - pos, 0), " %s", i->params[j]);
@@ -131,3 +137,37 @@ int irc_user_cmp(const char *a, const char *b)
     return (reallen_a != reallen_b) ? 1 : strncasecmp(a, b, cmplen);
 }
 
+
+const char *irc_command_to_string(enum irc_command cmd)
+{
+    switch (cmd) {
+#define X(name, num) case num: return (("000" #num) + (num < 10 ?  1 : \
+                                                      (num < 100 ? 2 : \
+                                                                   3)));
+        IRC_NUMERICS
+#undef X
+#define X(cmd) case CMD_ ## cmd: return #cmd;
+        IRC_COMMANDS;
+#undef X
+        default: return NULL;
+    }
+}
+
+enum irc_command irc_string_to_command(const char *cmd)
+{
+    if ((strlen(cmd) == 3) && (isdigit(*(cmd))
+                            && isdigit(*(cmd + 1))
+                            && isdigit(*(cmd + 2)))) {
+#define X(numeric, num) \
+        if (atoi(cmd) == num) return numeric; else
+    IRC_NUMERICS
+#undef X
+        return -1;
+    } else {
+#define X(ecmd) \
+        if (!strcmp(cmd, #ecmd)) return CMD_ ## ecmd; else
+    IRC_COMMANDS
+#undef X
+        return -1;
+    }
+}

@@ -1,5 +1,6 @@
 #include "irc/irc.h"
 #include "irc/util.h"
+#include "irc/session.h"
 #include "util/util.h"
 
 #include <stdio.h>
@@ -34,7 +35,7 @@ int irc_split_prefix(struct irc_prefix_parts *dst, const char *prefix)
 
 
 void irc_mkmessage(struct irc_message *dest,
-                   const char *cmd,
+                   enum irc_command cmd,
                    const char *args[], size_t n,
                    const char *fmt, ...)
 {
@@ -46,13 +47,13 @@ void irc_mkmessage(struct irc_message *dest,
 }
 
 void irc_vmkmessage(struct irc_message *dest,
-                    const char *cmd,
+                    enum irc_command cmd,
                     const char *args[], size_t n,
                     const char *fmt, va_list vargs)
 {
     memset(dest, 0, sizeof(*dest));
 
-    strncpy(dest->command, cmd, sizeof(dest->command) - 1);
+    dest->command = cmd;
 
     for (size_t i = 0; (i < n) && (i < IRC_PARAM_COUNT_MAX); ++i)
         strncpy(dest->params[i], args[i], sizeof(dest->params[i]) - 1);
@@ -73,7 +74,7 @@ void irc_vmkmessage(struct irc_message *dest,
  * 2 lines within mkprivmsg and mknotice, but repeated code is bad code :(
  */
 void irc_vmkdirectmessage(struct irc_message *dest,
-                          const char *type,
+                          enum irc_command type,
                           const char *target,
                           const char *fmt, va_list args)
 {
@@ -87,7 +88,7 @@ void irc_mkprivmsg(struct irc_message *dest,
     va_list args;
 
     va_start(args, fmt);
-    irc_vmkdirectmessage(dest, "PRIVMSG", target, fmt, args);
+    irc_vmkdirectmessage(dest, CMD_PRIVMSG, target, fmt, args);
     va_end(args);
 }
 
@@ -98,7 +99,7 @@ void irc_mknotice(struct irc_message *dest,
     va_list args;
 
     va_start(args, fmt);
-    irc_vmkdirectmessage(dest, "NOTICE", target, fmt, args);
+    irc_vmkdirectmessage(dest, CMD_NOTICE, target, fmt, args);
     va_end(args);
 }
 
@@ -234,4 +235,140 @@ const char *irc_get_host(const char *prefix)
         return parts->host;
 
     return prefix;
+}
+
+void join(struct irc_session *s, const char *chan, const char *key)
+{
+    struct irc_message msg;
+
+    if (key)
+        irc_mkmessage(&msg, CMD_JOIN, (const char *[]){ chan, key }, 2, NULL);
+    else
+        irc_mkmessage(&msg, CMD_JOIN, (const char *[]){ chan }, 1, NULL);
+
+    sess_sendmsg(s, &msg);
+}
+
+void part(struct irc_session *s, const char *chan, const char *reasonfmt, ...)
+{
+    struct irc_message msg;
+
+    va_list args;
+
+    va_start(args, reasonfmt);
+    irc_vmkmessage(&msg, CMD_PART,
+            (const char *[]){ chan }, 1, reasonfmt, args);
+    va_end(args);
+
+    sess_sendmsg(s, &msg);
+}
+
+void quit(struct irc_session *s, const char *reasonfmt, ...)
+{
+    struct irc_message msg;
+
+    va_list args;
+
+    va_start(args, reasonfmt);
+    irc_vmkmessage(&msg, CMD_QUIT, NULL, 0, reasonfmt, args);
+    va_end(args);
+
+    sess_sendmsg(s, &msg);
+}
+
+void kick(struct irc_session *s, const char *chan,
+                                 const char *who,
+                                 const char *reasonfmt, ...)
+{
+    struct irc_message msg;
+
+    va_list args;
+
+    va_start(args, reasonfmt);
+    irc_vmkmessage(&msg, CMD_KICK, (const char *[]){ chan, who }, 2,
+            reasonfmt, args);
+    va_end(args);
+
+    sess_sendmsg(s, &msg);
+}
+
+void privmsg(struct irc_session *s, const char *target, const char *fmt, ...)
+{
+    struct irc_message msg;
+
+    va_list args;
+
+    va_start(args, fmt);
+    irc_vmkdirectmessage(&msg, CMD_PRIVMSG, target, fmt, args);
+    va_end(args);
+
+    sess_sendmsg(s, &msg);
+}
+
+void notice(struct irc_session *s, const char *target, const char *fmt, ...)
+{
+    struct irc_message msg;
+
+    va_list args;
+
+    va_start(args, fmt);
+    irc_vmkdirectmessage(&msg, CMD_NOTICE, target, fmt, args);
+    va_end(args);
+
+    sess_sendmsg(s, &msg);
+}
+
+void respond(struct irc_session *s,
+             const char *target,  /* where the message we're responding to was
+                                     received from */
+             const char *rtarget, /* user nickname to whom the response is */
+             const char *fmt,
+             ...)
+{
+    char buf[IRC_MESSAGE_MAX] = {0};
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    privmsg(s, irc_proper_target(target, rtarget), "%s: %s", rtarget, buf);
+}
+
+void ctcp_response(struct irc_session *s,
+                   const char *target,
+                   const char *ctcp,
+                   const char *fmt, ...)
+{
+    if (fmt != NULL) {
+        va_list args;
+        char buf[IRC_MESSAGE_MAX] = {0};
+
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+
+        notice(s, target, "\x01%s %s\x01", ctcp, buf);
+    } else {
+        notice(s, target, "\x01%s\x01", ctcp);
+    }
+}
+
+void ctcp_request(struct irc_session *s,
+                  const char *target,
+                  const char *ctcp,
+                  const char *fmt, ...)
+{
+    if (fmt != NULL) {
+        va_list args;
+        char buf[IRC_MESSAGE_MAX] = {0};
+
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+
+        privmsg(s, target, "\x01%s %s\x01", ctcp, buf);
+    } else {
+        privmsg(s, target, "\x01%s\x01", ctcp);
+    }
 }

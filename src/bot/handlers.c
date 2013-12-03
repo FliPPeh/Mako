@@ -2,7 +2,6 @@
 #include "bot/bot.h"
 #include "bot/reguser.h"
 #include "bot/module.h"
-#include "bot/helpers.h"
 
 #include "modules/module.h"
 
@@ -22,8 +21,8 @@
 
 
 int bot_split_ctcp(const char *source,
-        char *dctcp, size_t sctcp,
-        char *dargs, size_t sargs)
+                   char *dctcp, size_t sctcp,
+                   char *dargs, size_t sargs)
 {
     char copy[IRC_MESSAGE_MAX] = {0};
     char *line = NULL;
@@ -59,9 +58,9 @@ int bot_dispatch_event(struct bot *bot, struct mod_event *ev)
 }
 
 int bot_handle_command(struct bot *bot,
-        const char *prefix,
-        const char *target,
-        const char *command)
+                       const char *prefix,
+                       const char *target,
+                       const char *command)
 {
     int priv = !irc_is_channel(target);
     struct reguser *usr = NULL;
@@ -83,11 +82,11 @@ int bot_handle_command(struct bot *bot,
             if (!mod_load(bot, args)) {
                 struct mod_loaded *mod = mod_get(bot, args);
 
-                respond(bot, target, user.nick,
+                respond(bot->sess, target, user.nick,
                         "Successfully loaded module '%s' (%s)",
                             mod->path, mod->state->name);
             } else {
-                respond(bot, target, user.nick,
+                respond(bot->sess, target, user.nick,
                         "Failed loading module './%s.so'", args);
             }
         } else if (!strcmp(cmd, "unload_so")) {
@@ -95,13 +94,13 @@ int bot_handle_command(struct bot *bot,
 
             if (mod) {
                 if (!mod_unload(bot, mod))
-                    respond(bot, target, user.nick,
+                    respond(bot->sess, target, user.nick,
                             "Successfully unloaded module './%s.so'", args);
                 else
-                    respond(bot, target, user.nick,
+                    respond(bot->sess, target, user.nick,
                             "Failed unloading module '%s'", args);
             } else {
-                respond(bot, target, user.nick,
+                respond(bot->sess, target, user.nick,
                         "No such module './%s.so'", args);
             }
         } else if (!strcmp(cmd, "reload_so")) {
@@ -115,20 +114,20 @@ int bot_handle_command(struct bot *bot,
                 struct mod_loaded *mod = mod_get(bot, args);
 
                 if (unloaded)
-                    respond(bot, target, user.nick,
+                    respond(bot->sess, target, user.nick,
                         "Successfully reloaded module '%s' (%s)",
                             mod->path, mod->state->name);
                 else
-                    respond(bot, target, user.nick,
+                    respond(bot->sess, target, user.nick,
                         "Successfully loaded module '%s' (%s)",
                             mod->path, mod->state->name);
             } else {
-                respond(bot, target, user.nick,
+                respond(bot->sess, target, user.nick,
                     "Failed to load module '%s'", args);
             }
 
         } else if (!strcmp(cmd, "echo")) {
-            respond(bot, target, user.nick, "%s", args);
+            respond(bot->sess, target, user.nick, "%s", args);
         }
     }
 
@@ -166,9 +165,9 @@ int bot_on_ping(void *arg)
 }
 
 int bot_on_privmsg(void *arg,
-        const char *prefix,
-        const char *target,
-        const char *msg)
+                   const char *prefix,
+                   const char *target,
+                   const char *msg)
 {
     struct bot *bot = arg;
 
@@ -242,9 +241,9 @@ int bot_on_privmsg(void *arg,
 }
 
 int bot_on_notice(void *arg,
-        const char *prefix,
-        const char *target,
-        const char *msg)
+                  const char *prefix,
+                  const char *target,
+                  const char *msg)
 {
     struct bot *bot = arg;
 
@@ -286,9 +285,9 @@ int bot_on_join(void *arg, const char *prefix, const char *channel)
 }
 
 int bot_on_part(void *arg,
-        const char *prefix,
-        const char *channel,
-        const char *reason)
+                const char *prefix,
+                const char *channel,
+                const char *reason)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_PART,
@@ -316,10 +315,10 @@ int bot_on_quit(void *arg, const char *prefix, const char *reason)
 }
 
 int bot_on_kick(void *arg,
-        const char *prefix_kicker,
-        const char *prefix_kicked,
-        const char *channel,
-        const char *reason)
+                const char *prefix_kicker,
+                const char *prefix_kicked,
+                const char *channel,
+                const char *reason)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_KICK,
@@ -361,10 +360,10 @@ int bot_on_invite(void *arg, const char *prefix, const char *channel)
 }
 
 int bot_on_topic(void *arg,
-        const char *prefix,
-        const char *channel,
-        const char *topic_old,
-        const char *topic_new)
+                 const char *prefix,
+                 const char *channel,
+                 const char *topic_old,
+                 const char *topic_new)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_TOPIC,
@@ -380,10 +379,10 @@ int bot_on_topic(void *arg,
 }
 
 int bot_on_mode_set(void *arg,
-        const char *prefix,
-        const char *channel,
-        char mode,
-        const char *target)
+                    const char *prefix,
+                    const char *channel,
+                    char mode,
+                    const char *target)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_CHANNEL_MODE_SET,
@@ -399,10 +398,10 @@ int bot_on_mode_set(void *arg,
 }
 
 int bot_on_mode_unset(void *arg,
-        const char *prefix,
-        const char *channel,
-        char mode,
-        const char *target)
+                      const char *prefix,
+                      const char *channel,
+                      char mode,
+                      const char *target)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_CHANNEL_MODE_UNSET,
@@ -418,9 +417,9 @@ int bot_on_mode_unset(void *arg,
 }
 
 int bot_on_modes(void *arg,
-        const char *prefix,
-        const char *channel,
-        const char *modes)
+                 const char *prefix,
+                 const char *channel,
+                 const char *modes)
 {
     return bot_dispatch_event(arg, &(struct mod_event) {
         .type = EVENT_CHANNEL_MODES,
@@ -462,10 +461,10 @@ int bot_on_disconnect(void *arg)
 
 
 int bot_on_ctcp(struct bot *bot,
-        const char *prefix,
-        const char *target,
-        const char *ctcp,
-        const char *args)
+                const char *prefix,
+                const char *target,
+                const char *ctcp,
+                const char *args)
 {
     int priv = !irc_is_channel(target);
 
@@ -483,10 +482,10 @@ int bot_on_ctcp(struct bot *bot,
 }
 
 int bot_on_ctcp_response(struct bot *bot,
-        const char *prefix,
-        const char *target,
-        const char *ctcp,
-        const char *args)
+                         const char *prefix,
+                         const char *target,
+                         const char *ctcp,
+                         const char *args)
 {
     int priv = !irc_is_channel(target);
 
@@ -507,9 +506,9 @@ int bot_on_ctcp_response(struct bot *bot,
 }
 
 int bot_on_action(struct bot *bot,
-        const char *prefix,
-        const char *target,
-        const char *msg)
+                  const char *prefix,
+                  const char *target,
+                  const char *msg)
 {
     int priv = !irc_is_channel(target);
 

@@ -21,19 +21,19 @@ struct irc_prefix_parts
 int irc_split_prefix(struct irc_prefix_parts *dst, const char *prefix);
 
 void irc_mkmessage(struct irc_message *dest,
-                   const char *cmd,
+                   enum irc_command cmd,
                    const char *args[], size_t n,
                    const char *fmt, ...);
 
 void irc_vmkmessage(struct irc_message *dest,
-                    const char *cmd,
+                    enum irc_command cmd,
                     const char *args[], size_t n,
                     const char *fmt, va_list vargs);
 /*
  * Specific command utils
  */
 void irc_vmkdirectmessage(struct irc_message *dest,
-                          const char *type,
+                          enum irc_command cmd,
                           const char *target,
                           const char *fmt, va_list args);
 
@@ -98,5 +98,35 @@ const struct irc_prefix_parts *irc_get_prefix_parts(const char *prefix);
 const char *irc_get_nick(const char *prefix);
 const char *irc_get_user(const char *prefix);
 const char *irc_get_host(const char *prefix);
+
+/*
+ * Helper functions for common commands.
+ */
+void join(struct irc_session *s, const char *chan, const char *key);
+void part(struct irc_session *s, const char *chan, const char *reasonfmt, ...);
+void quit(struct irc_session *s, const char *reasonfmt, ...);
+void kick(struct irc_session *s, const char *chan,
+                                 const char *who,
+                                 const char *reasonfmt, ...);
+
+
+void privmsg(struct irc_session *s, const char *target, const char *fmt, ...);
+void notice(struct irc_session *s, const char *target, const char *fmt, ...);
+
+void respond(struct irc_session *s,
+             const char *target,  // channel or user to send the response to
+             const char *rtarget, // user to respond to
+             const char *fmt, ...);
+
+void ctcp_response(struct irc_session *s,
+                   const char *target,
+                   const char *ctcp,
+                   const char *fmt, ...);
+
+void ctcp_request(struct irc_session *s,
+                  const char *target,
+                  const char *ctcp,
+                  const char *fmt, ...);
+
 
 #endif /* defined IRC_UTIL_H */

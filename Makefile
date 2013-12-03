@@ -7,7 +7,6 @@ SOURCES=bot/bot.c          \
 		bot/module.c       \
 	   	bot/handlers.c     \
 		bot/reguser.c      \
-	   	bot/helpers.c      \
 		irc/irc.c          \
 		irc/session.c      \
 	   	irc/util.c         \
@@ -19,7 +18,7 @@ SOURCES=bot/bot.c          \
 
 # Same as $(SOURCES) but with each entry having a .o extension
 OBJECTS=$(addprefix src/, $(addsuffix .o, $(basename $(SOURCES))))
-MODULES=mod_base mod_lua
+MODULES=mod_base # mod_lua
 MODULE_LIBS=$(addsuffix .so, $(MODULES))
 
 # Subdirectory within src/modules/ where each mod resides
