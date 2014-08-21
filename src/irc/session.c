@@ -606,7 +606,7 @@ int sess_handle_message(struct irc_session *sess, struct irc_message *msg)
                 irc_channel_del_user(v, usr);
         }
 
-    } else if (msg->command == CMD_KICK) {
+    } else if (msg->command == CMD_NICK) {
         struct irc_user *user = NULL;
         const char *newnick = msg->paramcount > 0
             ? msg->params[0]
